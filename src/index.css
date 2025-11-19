@@ -1,0 +1,66 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: var(--font-primary);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  height: 100vh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+/* Headings use Book weight (400) like dooi-landing */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 400;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overscroll-behavior: none;
+}
+
+/* Allow xterm scrolling with styled scrollbar */
+.xterm .xterm-viewport {
+  overflow-y: auto !important;
+}
+
+/* Style the scrollbar to be thin and match theme */
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 10px;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast);
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
+}
+
+/* Firefox scrollbar styling */
+.xterm .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-default) var(--color-bg-secondary);
+}

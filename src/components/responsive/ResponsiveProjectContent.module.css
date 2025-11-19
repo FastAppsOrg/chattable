@@ -1,0 +1,183 @@
+.container {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tabNavBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--color-bg-secondary, #1e1e1e);
+  border-bottom: 1px solid var(--color-border, #333);
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tabButtonsContainer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.tabButtonsContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.tabButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--color-text-secondary, #888);
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tabButton:hover {
+  background: var(--color-bg-hover, rgba(255, 255, 255, 0.05));
+}
+
+.tabButton:focus-visible {
+  outline: 2px solid var(--color-primary, #3b82f6);
+  outline-offset: -2px;
+}
+
+.tabButton.active {
+  background: var(--color-primary-alpha, rgba(59, 130, 246, 0.1));
+  color: var(--color-primary, #3b82f6);
+  font-weight: 500;
+}
+
+.tabIcon {
+  flex-shrink: 0;
+}
+
+.tabLabel {
+  flex-shrink: 0;
+}
+
+.floatButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  background: var(--color-bg-tertiary, #2a2a2a);
+  border: none;
+  border-radius: 6px;
+  color: var(--color-text-primary, #f0f0f0);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.floatButton:hover {
+  background: var(--color-bg-hover, rgba(255, 255, 255, 0.08));
+}
+
+.floatButton.floating {
+  background: var(--color-primary, #3b82f6);
+  color: #fff;
+}
+
+.floatButton.floating:hover {
+  background: var(--color-primary-hover, #2563eb);
+}
+
+.contentArea {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Light mode adjustments */
+@media (prefers-color-scheme: light) {
+  .tabNavBar {
+    background: #f8f9fa;
+    border-bottom-color: #e0e0e0;
+  }
+
+  .tabButton {
+    color: #666;
+  }
+
+  .tabButton:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .tabButton.active {
+    background: rgba(59, 130, 246, 0.1);
+    color: #1d4ed8;
+  }
+
+  .floatButton {
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+
+  .floatButton:hover {
+    background: #d1d5db;
+  }
+
+  .floatButton.floating {
+    background: #3b82f6;
+    color: #fff;
+  }
+
+  .floatButton.floating:hover {
+    background: #2563eb;
+  }
+}
+
+/* Dark mode enhancements */
+@media (prefers-color-scheme: dark) {
+  .tabButton:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* Mobile landscape adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  .tabNavBar {
+    padding: 4px 8px;
+  }
+
+  .tabButton,
+  .floatButton {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .tabLabel {
+    display: none;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 500px) and (max-width: 768px) {
+  .tabNavBar {
+    padding: 10px 16px;
+  }
+
+  .tabButton,
+  .floatButton {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}

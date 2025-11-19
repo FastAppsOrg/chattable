@@ -1,0 +1,105 @@
+.chatInputWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.chatInputContainer {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  background: white;
+  border: 1px solid var(--color-border-default);
+  border-radius: 24px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 8px 12px;
+  gap: 12px;
+}
+
+[data-theme='dark'] .chatInputContainer {
+  background: var(--color-bg-secondary);
+}
+
+.chatInputContainer:focus-within {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+
+.chatTextarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  outline: none;
+  resize: none;
+  overflow: auto;
+  min-height: 100px;
+  max-height: 300px;
+  transition: height 0.1s ease;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chatTextarea::-webkit-scrollbar {
+  display: none;
+}
+
+.chatTextarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.chatTextarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chatTextarea:disabled::placeholder {
+  color: var(--color-text-primary);
+  opacity: 1;
+}
+
+.sendButton {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  background: #0D0D0D;
+  color: #ffffff;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  align-self: flex-end;
+  padding: 0;
+}
+
+.sendButton:hover:not(:disabled) {
+  background: #2B2B2B;
+}
+
+.sendButton:disabled {
+  background: #D1D1D1;
+  cursor: not-allowed;
+}
+
+[data-theme='dark'] .sendButton {
+  background: #ffffff;
+  color: #0D0D0D;
+}
+
+[data-theme='dark'] .sendButton:hover:not(:disabled) {
+  background: #E8E8E8;
+}
+
+[data-theme='dark'] .sendButton:disabled {
+  background: #565656;
+  color: #8F8F8F;
+}

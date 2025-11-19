@@ -1,0 +1,319 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--navbar-height-mobile, 64px);
+  padding: 0 var(--mobile-padding, 12px);
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--color-border);
+  position: relative;
+  z-index: 100;
+}
+
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rightSection {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Logo Toggle Button - Combined logo + arrow */
+.logoToggleButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+.logoToggleButton:hover {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-border-default);
+}
+
+.logoToggleButton:active {
+  transform: scale(0.98);
+}
+
+.logoImage {
+  height: 20px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.toggleArrow {
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.logoToggleButton:hover .toggleArrow {
+  color: var(--color-text-primary);
+  transform: translateX(2px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 450;  /* OpenAI-style lighter weight */
+  color: var(--color-text-primary);
+  min-width: 0;
+  flex: 1;
+}
+
+.separator {
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.projectName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Tab Selector Styles */
+.tabSelector {
+  position: relative;
+  margin-left: 8px;
+}
+
+.tabSelectorButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tabSelectorButton:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-hover);
+}
+
+.tabSelectorButton:active {
+  transform: scale(0.98);
+}
+
+.tabDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 140px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px;
+  z-index: 200;
+  animation: slideDown 0.2s ease;
+}
+
+.tabOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.tabOption:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.tabOption.activeTab {
+  background: var(--color-primary-alpha);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.chevron {
+  transition: transform 0.2s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min, 44px);
+  height: var(--touch-target-min, 44px);
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: 8px;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+.iconButton:hover {
+  background-color: var(--color-bg-hover, rgba(255, 255, 255, 0.05));
+}
+
+.iconButton:active {
+  background-color: var(--color-bg-active, rgba(255, 255, 255, 0.1));
+}
+
+.iconButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.projectSelector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  max-width: 200px;
+}
+
+.projectSelector:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.projectSelector:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.projectSelectorName {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+.projectSelector:hover .chevron {
+  transform: translateY(1px);
+}
+
+/* Safe area adjustments for notched devices */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .navbar {
+    padding-top: env(safe-area-inset-top);
+    height: calc(var(--navbar-height-mobile, 64px) + env(safe-area-inset-top));
+  }
+}
+
+/* Landscape mode adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  .navbar {
+    height: 48px;
+  }
+
+  .iconButton {
+    width: 36px;
+    height: 36px;
+  }
+
+  .brandText {
+    font-size: 14px;
+  }
+
+  .projectName,
+  .workspaceName {
+    font-size: 12px;
+  }
+}
+
+/* Dark mode specific styles */
+@media (prefers-color-scheme: dark) {
+  .navbar {
+    background: var(--color-bg-primary, #1a1a1a);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .iconButton:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .iconButton:active {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Light mode specific styles */
+@media (prefers-color-scheme: light) {
+  .navbar {
+    background: var(--color-bg-primary, #ffffff);
+    border-bottom-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .iconButton:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .iconButton:active {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+}

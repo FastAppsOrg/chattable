@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Font Test</title>
+  <style>
+    @font-face {
+      font-family: 'Suisse Intl';
+      src: url('/fonts/fonnts.com-Suisse_Intl_Regular.ttf') format('truetype');
+      font-weight: 450;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    body {
+      font-family: 'Suisse Intl', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 450;
+      letter-spacing: -0.01em;
+      padding: 40px;
+      background: white;
+      color: #171717;
+    }
+
+    .test {
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+
+    .info {
+      font-size: 14px;
+      color: #666;
+      font-family: monospace;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+  <div class="test">The quick brown fox jumps over the lazy dog</div>
+  <div class="test">1234567890</div>
+  <div class="info" id="font-info"></div>
+
+  <script>
+    const testDiv = document.querySelector('.test');
+    const computedStyle = window.getComputedStyle(testDiv);
+    const infoDiv = document.getElementById('font-info');
+
+    infoDiv.textContent =
+      'Computed font-family: ' + computedStyle.fontFamily + '\n' +
+      'Computed font-weight: ' + computedStyle.fontWeight;
+
+    document.fonts.ready.then(() => {
+      const loaded = document.fonts.check('450 16px "Suisse Intl"');
+      console.log('Font loaded:', loaded);
+      infoDiv.textContent += '\nFont check: ' + (loaded ? 'LOADED ✓' : 'NOT LOADED ✗');
+    });
+  </script>
+</body>
+</html>

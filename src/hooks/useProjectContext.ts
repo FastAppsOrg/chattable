@@ -1,0 +1,34 @@
+import { createContext, useContext } from 'react'
+import { CreateProjectForm } from '../types/project'
+
+interface Project {
+  project_id: string
+  name: string
+  git_url: string
+  default_branch: string
+  status: string
+  created_at: string
+  default_workspace?: any
+}
+
+interface ProjectContextType {
+  projects: Project[]
+  loading: boolean
+  error: string | null
+  fetchProjects: () => Promise<void>
+  createProject: (form: CreateProjectForm) => Promise<Project>
+  updateProject: (projectId: string, updates: Partial<Project>) => Promise<void>
+  deleteProject: (projectId: string) => Promise<void>
+  syncProject: (projectId: string) => Promise<void>
+  checkGitHubToken: () => Promise<boolean>
+}
+
+export const ProjectContext = createContext<ProjectContextType | undefined>(undefined)
+
+export function useProjectContext() {
+  const context = useContext(ProjectContext)
+  if (context === undefined) {
+    throw new Error('useProjectContext must be used within a ProjectProvider')
+  }
+  return context
+}

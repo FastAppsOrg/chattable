@@ -1,0 +1,810 @@
+/**
+ * WidgetUI Builder Design System
+ * Based on dooi-landing (fastapps) design
+ *
+ * Clean, minimal, professional design with Suisse Intl typography
+ */
+
+/* ============================================
+   FONT FACES - Suisse Intl & Satoshi
+   ============================================ */
+
+@font-face {
+  font-family: 'Suisse Intl';
+  src: url('/fonts/fonnts.com-Suisse_Intl_Book.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Suisse Intl';
+  src: url('/fonts/fonnts.com-Suisse_Intl_Regular.ttf') format('truetype');
+  font-weight: 450;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Suisse Intl';
+  src: url('/fonts/fonnts.com-Suisse_Intl_Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Suisse Intl';
+  src: url('/fonts/fonnts.com-Suisse_Intl_Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Suisse Intl Mono';
+  src: url('/fonts/fonnts.com-Suisse_Intl_Mono.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ============================================
+     OPENAI LIGHT THEME (Default)
+     Apps in ChatGPT Design System
+     ============================================ */
+
+  /* Background Colors */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #e8e8e8;
+  --color-bg-tertiary: #f3f3f3;
+  --color-bg-elevated: #ffffff;
+  --color-bg-overlay: rgba(255, 255, 255, 0.95);
+
+  /* Text Colors */
+  --color-text-primary: #0d0d0d;
+  --color-text-secondary: #5d5d5d;
+  --color-text-tertiary: #8f8f8f;
+  --color-text-muted: #8f8f8f;
+  --color-text-link: #0285ff;
+  --color-text-inverted: #ffffff;
+
+  /* Prose/Documentation Colors */
+  --color-text-prose: #0d0d0d;
+  --color-text-prose-heading: #0d0d0d;
+  --color-text-prose-strong: #0d0d0d;
+  --color-text-prose-marker: #5d5d5d;
+
+  /* Border Colors */
+  --color-border-default: rgba(13, 13, 13, 0.05);
+  --color-border-subtle: rgba(13, 13, 13, 0.03);
+  --color-border-strong: rgba(13, 13, 13, 0.1);
+  --color-border-focus: #0285ff;
+
+  /* Icon Colors */
+  --color-icon-primary: #0d0d0d;
+  --color-icon-secondary: #5d5d5d;
+  --color-icon-tertiary: #8f8f8f;
+  --color-icon-inverted: #ffffff;
+  --color-icon-accent: #0285ff;
+
+  /* Accent Colors */
+  --color-accent-blue: #0285ff;
+  --color-accent-red: #e02e2a;
+  --color-accent-orange: #e25507;
+  --color-accent-green: #089635;
+  --color-accent-purple: #a78bfa;
+  --color-accent-purple-bg: rgba(139, 92, 246, 0.15);
+  --color-accent-purple-border: rgba(139, 92, 246, 0.3);
+  --color-accent-amber: #ffc107;
+  --color-accent-amber-hover: #ffb300;
+  --color-accent-amber-bg: rgba(255, 193, 7, 0.1);
+  --color-accent-amber-border: rgba(255, 193, 7, 0.3);
+
+  /* Status Colors */
+  --color-status-error: #e02e2a;
+  --color-status-warning: #e25507;
+  --color-status-success: #089635;
+  --color-status-connected: #089635;
+  --color-status-disconnected: #e02e2a;
+  --color-status-pending: #e25507;
+
+  /* State Colors (compatibility) */
+  --color-success: #089635;
+  --color-success-hover: #067528;
+  --color-success-bg: rgba(8, 150, 53, 0.1);
+  --color-success-border: rgba(8, 150, 53, 0.3);
+
+  --color-error: #e02e2a;
+  --color-error-hover: #c02622;
+  --color-error-bg: rgba(224, 46, 42, 0.1);
+  --color-error-border: rgba(224, 46, 42, 0.3);
+
+  --color-warning: #e25507;
+  --color-warning-hover: #c24806;
+  --color-warning-bg: rgba(226, 85, 7, 0.1);
+  --color-warning-border: rgba(226, 85, 7, 0.3);
+
+  --color-info: #0285ff;
+  --color-info-hover: #0270d9;
+  --color-info-bg: rgba(2, 133, 255, 0.1);
+  --color-info-border: rgba(2, 133, 255, 0.3);
+
+  /* GitHub/Social Colors */
+  --color-github: #24292e;
+  --color-github-hover: #1a1e22;
+
+  /* Primary Action */
+  --color-primary: #0d0d0d;
+  --color-primary-hover: #5d5d5d;
+  --color-primary-active: #000000;
+
+  /* Interactive States */
+  --color-hover-bg: rgba(0, 0, 0, 0.05);
+  --color-active-bg: rgba(0, 0, 0, 0.1);
+  --color-focus-ring: #0285ff;
+
+  /* Code Block Colors */
+  --color-bg-code: linear-gradient(45deg, #f3f3f3 0%, #e8e8e8 100%);
+  --color-bg-code-header: #f3f3f3;
+  --color-border-code: rgba(13, 13, 13, 0.05);
+  --color-text-code: #0d0d0d;
+  --color-text-code-linenumber: #8f8f8f;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+  /* ============================================
+     TYPOGRAPHY - SF Pro
+     ============================================ */
+
+  /* Font Families */
+  --font-primary: 'SF Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'SFMono-Regular', ui-monospace, monospace;
+
+  /* Font Sizes - OpenAI Scale */
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+  --font-size-3xl: 1.875rem;  /* 30px */
+  --font-size-4xl: 2.25rem;   /* 36px */
+  --font-size-5xl: 3rem;      /* 48px */
+
+  /* Font Weights - SF Pro */
+  --font-weight-book: 400;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Line Heights */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Letter Spacing - OpenAI Style */
+  --letter-spacing-tight: -0.01em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.01em;
+
+  /* ============================================
+     SPACING - OpenAI Scale
+     ============================================ */
+
+  --spacing-0: 0px;
+  --spacing-1: 2px;
+  --spacing-2: 4px;
+  --spacing-xs: 0.5rem;   /* 8px */
+  --spacing-sm: 1rem;     /* 16px */
+  --spacing-md: 1.5rem;   /* 24px */
+  --spacing-lg: 2rem;     /* 32px */
+  --spacing-xl: 3rem;     /* 48px */
+  --spacing-2xl: 4rem;    /* 64px */
+  --spacing-3xl: 6rem;    /* 96px */
+
+  /* ============================================
+     BORDER RADIUS
+     ============================================ */
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+
+  /* ============================================
+     TRANSITIONS & ANIMATIONS
+     ============================================ */
+
+  --duration-fast: 0.15s;
+  --duration-normal: 0.3s;
+  --duration-slow: 0.5s;
+
+  --easing-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-in: cubic-bezier(0.4, 0, 1, 1);
+  --easing-out: cubic-bezier(0, 0, 0.2, 1);
+  --easing-in-out: cubic-bezier(0.4, 0, 0.6, 1);
+
+  /* ============================================
+     Z-INDEX LAYERS
+     ============================================ */
+
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+
+  /* ============================================
+     LAYOUT
+     ============================================ */
+
+  --navbar-height: 64px;
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 64px;
+  --max-content-width: 1200px;
+}
+
+/* ============================================
+   OPENAI DARK THEME
+   Apps in ChatGPT Design System
+   ============================================ */
+
+[data-theme='dark'] {
+  /* Background Colors */
+  --color-bg-primary: #212121;
+  --color-bg-secondary: #303030;
+  --color-bg-tertiary: #414141;
+  --color-bg-elevated: #2a2a2a;
+  --color-bg-overlay: rgba(33, 33, 33, 0.95);
+  --color-bg-hover: #303030;
+  --color-bg-active: #414141;
+
+  /* Text Colors */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #cdcdcd;
+  --color-text-tertiary: #afafaf;
+  --color-text-muted: #afafaf;
+  --color-text-link: #48aaff;
+  --color-text-inverted: #0d0d0d;
+
+  /* Prose/Documentation Colors */
+  --color-text-prose: #ffffff;
+  --color-text-prose-heading: #ffffff;
+  --color-text-prose-strong: #ffffff;
+  --color-text-prose-marker: #cdcdcd;
+
+  /* Border Colors */
+  --color-border-default: rgba(255, 255, 255, 0.15);
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
+  --color-border-strong: rgba(255, 255, 255, 0.3);
+  --color-border-focus: #ffffff;
+
+  /* Icon Colors */
+  --color-icon-primary: #ffffff;
+  --color-icon-secondary: #cdcdcd;
+  --color-icon-tertiary: #afafaf;
+  --color-icon-inverted: #0d0d0d;
+  --color-icon-accent: #48aaff;
+
+  /* Accent Colors */
+  --color-accent-blue: #48aaff;
+  --color-accent-red: #ff8583;
+  --color-accent-orange: #ff9e6c;
+  --color-accent-green: #089635;
+  --color-accent-purple: #a78bfa;
+  --color-accent-purple-bg: rgba(167, 139, 250, 0.15);
+  --color-accent-purple-border: rgba(167, 139, 250, 0.3);
+  --color-accent-amber: #ffbb33;
+  --color-accent-amber-hover: #ffa500;
+  --color-accent-amber-bg: rgba(255, 187, 51, 0.15);
+  --color-accent-amber-border: rgba(255, 187, 51, 0.3);
+
+  /* Status Colors */
+  --color-status-error: #ff8583;
+  --color-status-warning: #ff9e6c;
+  --color-status-success: #089635;
+  --color-status-connected: #089635;
+  --color-status-disconnected: #ff8583;
+  --color-status-pending: #ff9e6c;
+
+  /* State Colors (compatibility) */
+  --color-success: #089635;
+  --color-success-hover: #067528;
+  --color-success-bg: rgba(8, 150, 53, 0.15);
+  --color-success-border: rgba(8, 150, 53, 0.3);
+
+  --color-error: #ff8583;
+  --color-error-hover: #ff6b69;
+  --color-error-bg: rgba(255, 133, 131, 0.15);
+  --color-error-border: rgba(255, 133, 131, 0.3);
+
+  --color-warning: #ff9e6c;
+  --color-warning-hover: #ff8a52;
+  --color-warning-bg: rgba(255, 158, 108, 0.15);
+  --color-warning-border: rgba(255, 158, 108, 0.3);
+
+  --color-info: #48aaff;
+  --color-info-hover: #6bb9ff;
+  --color-info-bg: rgba(72, 170, 255, 0.15);
+  --color-info-border: rgba(72, 170, 255, 0.3);
+
+  /* GitHub/Social Colors */
+  --color-github: #24292e;
+  --color-github-hover: #1a1e22;
+
+  /* Primary Action */
+  --color-primary: #48aaff;
+  --color-primary-hover: #6bb9ff;
+  --color-primary-active: #2f9bff;
+
+  /* Interactive States */
+  --color-hover-bg: rgba(255, 255, 255, 0.05);
+  --color-active-bg: rgba(255, 255, 255, 0.1);
+  --color-focus-ring: #48aaff;
+
+  /* Code Block Colors */
+  --color-bg-code: linear-gradient(45deg, #2a2a2a 0%, #303030 100%);
+  --color-bg-code-header: #2a2a2a;
+  --color-border-code: rgba(255, 255, 255, 0.05);
+  --color-text-code: #ffffff;
+  --color-text-code-linenumber: #cdcdcd;
+
+  /* Shadows - Darker for dark theme */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Gradient Background (minimal) */
+.gradient-subtle {
+  background: linear-gradient(45deg, #f9f9f9 0%, #f7f7f8 100%);
+}
+
+/* Glass Morphism Effect */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--color-border-subtle);
+}
+
+/* ============================================
+   COMPONENT UTILITIES - Buttons
+   ============================================ */
+
+.btn-base {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing-default);
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border: 1px solid var(--color-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-default);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.btn-github {
+  background: var(--color-github);
+  color: white;
+  border: none;
+}
+
+.btn-github:hover:not(:disabled) {
+  background: var(--color-github-hover);
+}
+
+.btn-success {
+  background: var(--color-success);
+  color: white;
+  border: 1px solid var(--color-success);
+}
+
+.btn-success:hover:not(:disabled) {
+  background: var(--color-success-hover);
+  transform: translateY(-1px);
+}
+
+.btn-warning {
+  background: var(--color-accent-orange);
+  color: white;
+  border: 1px solid var(--color-accent-orange);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: var(--color-accent-orange-hover);
+  transform: translateY(-1px);
+}
+
+.btn-error {
+  background: var(--color-error);
+  color: white;
+  border: 1px solid var(--color-error);
+}
+
+.btn-error:hover:not(:disabled) {
+  background: var(--color-error-hover);
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px dashed var(--color-border-default);
+  color: var(--color-text-secondary);
+}
+
+.btn-outline:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-bg-tertiary);
+}
+
+.btn-disabled,
+.btn-base:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ============================================
+   COMPONENT UTILITIES - Cards
+   ============================================ */
+
+.card-base {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  transition: all var(--duration-fast);
+}
+
+.card-interactive:hover {
+  border-color: var(--color-border-default);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-elevated {
+  background: var(--color-bg-primary);
+  box-shadow: var(--shadow-md);
+}
+
+/* ============================================
+   COMPONENT UTILITIES - Badges
+   ============================================ */
+
+.badge-base {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-block;
+}
+
+.badge-purple {
+  background: var(--color-accent-purple-bg);
+  color: var(--color-accent-purple);
+  border: 1px solid var(--color-accent-purple-border);
+}
+
+.badge-success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
+}
+
+.badge-warning {
+  background: var(--color-accent-amber-bg);
+  color: var(--color-accent-amber);
+  border: 1px solid var(--color-accent-amber-border);
+}
+
+.badge-error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  border: 1px solid var(--color-error-border);
+}
+
+/* ============================================
+   COMPONENT UTILITIES - Inputs
+   ============================================ */
+
+.input-base {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-primary);
+  transition: border-color var(--duration-fast);
+}
+
+.input-base:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input-base::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.input-error {
+  border-color: var(--color-error);
+}
+
+.input-error:focus {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* ============================================
+   COMPONENT UTILITIES - Alerts/Banners
+   ============================================ */
+
+.alert-base {
+  padding: var(--spacing-md);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  border: 1px solid;
+}
+
+.alert-warning {
+  background: var(--color-accent-amber-bg);
+  border-color: var(--color-accent-amber-border);
+  color: var(--color-text-primary);
+}
+
+.alert-error {
+  background: var(--color-error-bg);
+  border-color: var(--color-error-border);
+  color: var(--color-text-primary);
+}
+
+.alert-success {
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-text-primary);
+}
+
+.alert-info {
+  background: var(--color-info-bg);
+  border-color: var(--color-info-border);
+  color: var(--color-text-primary);
+}
+
+/* ============================================
+   PROSE & DOCUMENTATION STYLES
+   ============================================ */
+
+/* Prose text content */
+.prose p,
+.prose li,
+.prose td,
+.prose th,
+.prose blockquote {
+  font-size: 18px !important;
+  color: var(--color-text-prose) !important;
+  letter-spacing: 0 !important;
+}
+
+/* Prose table override */
+.prose table td,
+.prose table th {
+  font-size: 14px !important;
+}
+
+.prose table td code,
+.prose table th code {
+  font-size: 12px !important;
+}
+
+/* Prose headings */
+.prose h2 {
+  font-size: 30px;
+  font-family: 'Satoshi', sans-serif;
+  font-weight: 700;
+  color: var(--color-text-prose-heading);
+}
+
+/* Prose strong/bold */
+.prose strong {
+  font-weight: 500 !important;
+  color: var(--color-text-prose-strong) !important;
+}
+
+/* Prose list markers */
+.prose ul li::marker,
+.prose ol li::marker,
+.prose ul > li::marker,
+.prose ol > li::marker {
+  color: var(--color-text-prose-marker) !important;
+  font-weight: 400 !important;
+}
+
+/* Prose lists */
+.prose ul,
+.prose ol {
+  padding-left: 32px !important;
+  line-height: 1.5 !important;
+}
+
+.prose li {
+  line-height: 1.5 !important;
+  margin-bottom: 8px !important;
+}
+
+.prose li:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Code Block Styling - OpenAI/Shadcn style */
+.code-block,
+.prose [class*="CodeBlock"] {
+  margin: 24px 0 !important;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-code);
+  border: 0.5px solid var(--color-border-code);
+  font-family: 'SF Mono', 'SFMono-Regular', ui-monospace, consolas, 'Liberation Mono', menlo, monospace;
+  font-size: var(--font-size-sm);
+  line-height: 1.6em;
+  color: var(--color-text-code);
+}
+
+/* Code block header */
+[class*="CodeBlockHeader"] {
+  background: var(--color-bg-code-header) !important;
+  border-bottom: none !important;
+  padding: 10px 16px !important;
+}
+
+/* Code block content */
+[class*="CodeBlock"] pre {
+  font-family: 'SF Mono', 'SFMono-Regular', ui-monospace, consolas, 'Liberation Mono', menlo, monospace !important;
+  background: transparent !important;
+  color: var(--color-text-code) !important;
+  font-size: var(--font-size-sm) !important;
+  line-height: 20px !important;
+  margin: 0 !important;
+  padding: 12px 16px !important;
+}
+
+[class*="CodeBlock"] code {
+  font-family: 'SF Mono', 'SFMono-Regular', ui-monospace, consolas, 'Liberation Mono', menlo, monospace !important;
+  color: var(--color-text-code) !important;
+  font-size: var(--font-size-sm) !important;
+}
+
+/* Line numbers */
+[class*="CodeBlock"] .line::before {
+  color: var(--color-text-code-linenumber) !important;
+}
+
+/* Syntax highlighting */
+[class*="CodeBlock"] .shiki {
+  background: transparent !important;
+}
+
+/* Inline Code */
+.inline-code,
+.prose code {
+  border: 0.5px solid var(--color-border-code) !important;
+  background: var(--color-bg-code) !important;
+  font-family: 'SF Mono', 'SFMono-Regular', ui-monospace, consolas, 'Liberation Mono', menlo, monospace !important;
+  font-weight: var(--font-weight-book) !important;
+  border-radius: var(--radius-md) !important;
+  margin: 0 3px !important;
+  padding: 0 0.3em !important;
+  display: inline-block !important;
+  font-size: var(--font-size-sm) !important;
+  line-height: 1.6em !important;
+  color: var(--color-text-code) !important;
+  letter-spacing: 0 !important;
+}
+
+/* Scrollbar Styling - Minimal */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
+}
+
+/* Firefox scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-default) var(--color-bg-secondary);
+}
+
+/* Typography Utilities */
+.text-balance {
+  text-wrap: balance;
+}
+
+.letter-spacing-tight {
+  letter-spacing: var(--letter-spacing-tight);
+}

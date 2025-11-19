@@ -1,0 +1,56 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  height: 100vh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Allow xterm scrolling with styled scrollbar */
+.xterm .xterm-viewport {
+  overflow-y: auto !important;
+}
+
+/* Style the scrollbar to be thin and match theme */
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 10px;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: var(--radius-lg);
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* Firefox scrollbar styling */
+.xterm .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-default) var(--color-bg-primary);
+}

@@ -1,0 +1,43 @@
+.panel {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.panelContent {
+  width: 60%;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  position: relative;
+}
+
+.panelHeader {
+  padding: var(--spacing-xs);
+  padding-bottom: 0;
+  font-size: var(--font-size-xl);
+}
+
+.panelTitle {
+  font-size: 2.5rem;
+  font-weight: var(--font-weight-regular);  /* 450 - cleaner OpenAI-style look */
+  color: var(--color-text-primary);
+  margin: 0;
+  text-align: center;
+  line-height: 1.2;
+  letter-spacing: var(--letter-spacing-tight);  /* -0.01em for tighter spacing */
+}
+
+.panelBody {
+  flex: 1;
+  overflow-y: visible;
+  overflow-x: visible;
+  max-height: 60vh;
+}
+
+.subtitle {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin: var(--spacing-lg) 0;
+}

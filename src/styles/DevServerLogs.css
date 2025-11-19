@@ -1,0 +1,131 @@
+.dev-server-logs {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-primary);
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+}
+
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.logs-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.logs-icon {
+  font-size: 16px;
+}
+
+.logs-status {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.logs-status.connected {
+  color: var(--color-status-connected);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.logs-status.disconnected {
+  color: var(--color-status-disconnected);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.logs-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-sm);
+  background: var(--color-bg-primary);
+}
+
+.logs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.logs-empty p {
+  margin: var(--spacing-xs) 0;
+}
+
+.logs-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.logs-lines {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.log-line {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: 2px 0;
+  border-bottom: 1px solid transparent;
+  transition: background var(--duration-fast);
+}
+
+.log-line:hover {
+  background: var(--color-bg-secondary);
+}
+
+.log-index {
+  flex-shrink: 0;
+  width: 50px;
+  text-align: right;
+  color: var(--color-text-tertiary);
+  user-select: none;
+}
+
+.log-content {
+  flex: 1;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Syntax highlighting for common log patterns */
+.log-content {
+  /* Errors */
+  &:has([class*="ERROR"]),
+  &:has([class*="error"]) {
+    color: var(--color-danger);
+  }
+
+  /* Warnings */
+  &:has([class*="WARN"]),
+  &:has([class*="warn"]) {
+    color: #f59e0b;
+  }
+
+  /* Info */
+  &:has([class*="INFO"]),
+  &:has([class*="info"]) {
+    color: var(--color-info);
+  }
+
+  /* Success */
+  &:has([class*="SUCCESS"]),
+  &:has([class*="success"]) {
+    color: var(--color-status-connected);
+  }
+}

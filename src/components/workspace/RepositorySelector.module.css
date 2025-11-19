@@ -1,0 +1,387 @@
+/* Repository Selector Container */
+.container {
+  position: relative;
+  width: 100%;
+}
+
+.label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Dropdown Button */
+.dropdownButton {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  text-align: left;
+}
+
+.dropdownButton:hover {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border-hover);
+}
+
+.dropdownButton:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: var(--color-bg-tertiary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.dropdownButton.open {
+  border-color: var(--color-primary);
+  background: var(--color-bg-tertiary);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Selected Repository Display */
+.selectedRepo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.repoAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.repoInfo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.repoName {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* Badges */
+.privateBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-inverse);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+/* Dropdown Arrow */
+.dropdownArrow {
+  width: 20px;
+  height: 20px;
+  color: var(--color-text-secondary);
+  transition: transform var(--duration-fast);
+}
+
+.dropdownArrow.open {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu */
+.dropdownMenu {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-xl);
+  max-height: 400px;
+  overflow: hidden;
+  z-index: 9999; /* Very high z-index since it's rendered in body */
+  animation: dropdownSlide var(--duration-fast) ease-out;
+}
+
+@keyframes dropdownSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Search Box */
+.searchBox {
+  position: sticky;
+  top: 0;
+  background: var(--color-bg-tertiary);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border-default);
+  padding: var(--spacing-md);
+  z-index: 10;
+}
+
+.searchInput {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  padding-left: 2.25rem;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  transition: all var(--duration-fast);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: var(--color-bg-primary);
+}
+
+.searchIcon {
+  position: absolute;
+  left: var(--spacing-sm);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
+/* Repository List */
+.repoList {
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Custom Scrollbar */
+.repoList::-webkit-scrollbar {
+  width: 8px;
+}
+
+.repoList::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+.repoList::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: 4px;
+}
+
+.repoList::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
+}
+
+/* Repository Option */
+.repoOption {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.repoOption:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.repoOption:focus {
+  outline: none;
+  background: var(--color-bg-tertiary);
+}
+
+.repoOption.selected {
+  background: var(--color-primary);
+  color: white;
+}
+
+/* None Option */
+.noneOption {
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+.noneOption .repoDetails {
+  color: var(--color-text-tertiary);
+}
+
+/* Repository Option Content */
+.repoContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.repoDetails {
+  flex: 1;
+  min-width: 0;
+}
+
+.repoTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.repoFullName {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.repoDescription {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  margin-bottom: var(--spacing-xs);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Repository Metadata */
+.repoMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.languageDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Language Colors */
+.languageDot[data-language='JavaScript'] {
+  color: #f1e05a;
+}
+.languageDot[data-language='TypeScript'] {
+  color: #2b7489;
+}
+.languageDot[data-language='Python'] {
+  color: #3572a5;
+}
+.languageDot[data-language='Go'] {
+  color: #00add8;
+}
+.languageDot[data-language='Rust'] {
+  color: #dea584;
+}
+.languageDot[data-language='Java'] {
+  color: #b07219;
+}
+.languageDot[data-language='C++'] {
+  color: #f34b7d;
+}
+.languageDot[data-language='Ruby'] {
+  color: #701516;
+}
+
+/* Star Icon */
+.starIcon {
+  color: var(--color-warning);
+}
+
+/* Loading State */
+.loading {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.loadingSpinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-border-default);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin: 0 auto var(--spacing-md);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error State */
+.error {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--color-status-error);
+  font-size: var(--font-size-sm);
+}
+
+/* Empty State */
+.empty {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+/* Branch Info */
+.branchInfo {
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border-default);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.branchName {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-mono);
+}

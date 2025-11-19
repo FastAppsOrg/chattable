@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Widget Browser HMR</title>
+
+    <!-- Import Map for resolving bare imports -->
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.3.1",
+          "react/": "https://esm.sh/react@18.3.1/",
+          "react-dom": "https://esm.sh/react-dom@18.3.1",
+          "react-dom/": "https://esm.sh/react-dom@18.3.1/"
+        }
+      }
+    </script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #header {
+        background: rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        padding: 16px 24px;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      #header h1 {
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      #status {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      #status.ready {
+        background: #10b981;
+      }
+
+      #status.compiling {
+        background: #f59e0b;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      #status.error {
+        background: #ef4444;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      #main-content {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+      }
+
+      #editor-panel {
+        width: 500px;
+        background: #1e1e1e;
+        color: #d4d4d4;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      #file-selector {
+        padding: 12px;
+        background: #252526;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      #file-selector select {
+        width: 100%;
+        padding: 8px 12px;
+        background: #3c3c3c;
+        color: white;
+        border: 1px solid #555;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      #code-editor {
+        flex: 1;
+        padding: 16px;
+        overflow: auto;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        white-space: pre;
+      }
+
+      #preview-panel {
+        flex: 1;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      #widget-container {
+        width: 100%;
+        height: 100%;
+        max-width: 600px;
+        max-height: 800px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+
+      #console {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-height: 200px;
+        background: rgba(0, 0, 0, 0.9);
+        color: #00ff00;
+        font-family: monospace;
+        font-size: 12px;
+        padding: 12px;
+        overflow-y: auto;
+        border-top: 2px solid #00ff00;
+        display: none;
+      }
+
+      #console.visible {
+        display: block;
+      }
+
+      .log-entry {
+        padding: 4px 0;
+        border-bottom: 1px solid rgba(0, 255, 0, 0.1);
+      }
+
+      .log-entry.error {
+        color: #ff4444;
+      }
+
+      .log-entry.warn {
+        color: #ffaa00;
+      }
+
+      #compile-btn {
+        margin-left: auto;
+        padding: 8px 16px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      #compile-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      #compile-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="header">
+      <h1>🔥 Widget Browser HMR</h1>
+      <div id="status">Initializing...</div>
+      <button id="compile-btn">⚡ Compile</button>
+      <button id="toggle-console" style="padding: 8px 16px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 6px; cursor: pointer; font-size: 14px;">
+        Console
+      </button>
+    </div>
+
+    <div id="main-content">
+      <div id="editor-panel">
+        <div id="file-selector">
+          <select id="widget-select">
+            <option value="">Select a widget...</option>
+            <option value="pokemon">pokemon.tsx</option>
+          </select>
+        </div>
+        <div id="code-editor">// Select a widget to start editing</div>
+      </div>
+
+      <div id="preview-panel">
+        <div id="widget-container">
+          <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999; font-size: 18px;">
+            Select and compile a widget to preview
+          </div>
+        </div>
+        <div id="console"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import * as esbuildWasm from 'https://cdn.jsdelivr.net/npm/esbuild-wasm@0.20.0/esm/browser.min.js'
+
+      // State
+      let initialized = false
+      let currentWidget = ''
+      let currentCode = ''
+      let eventSource = null
+      let autoCompileEnabled = true
+
+      // DOM Elements
+      const statusEl = document.getElementById('status')
+      const codeEditorEl = document.getElementById('code-editor')
+      const widgetContainerEl = document.getElementById('widget-container')
+      const widgetSelectEl = document.getElementById('widget-select')
+      const compileBtnEl = document.getElementById('compile-btn')
+      const consoleEl = document.getElementById('console')
+      const toggleConsoleBtn = document.getElementById('toggle-console')
+
+      // Console logging
+      function log(message, type = 'info') {
+        const entry = document.createElement('div')
+        entry.className = `log-entry ${type}`
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`
+        consoleEl.appendChild(entry)
+        consoleEl.scrollTop = consoleEl.scrollHeight
+      }
+
+      toggleConsoleBtn.addEventListener('click', () => {
+        consoleEl.classList.toggle('visible')
+      })
+
+      // Update status
+      function setStatus(text, state = 'ready') {
+        statusEl.textContent = text
+        statusEl.className = state
+      }
+
+      // Initialize esbuild
+      async function initializeEsbuild() {
+        try {
+          setStatus('Loading esbuild...', 'compiling')
+          log('Initializing esbuild-wasm...')
+
+          await esbuildWasm.initialize({
+            wasmURL: 'https://cdn.jsdelivr.net/npm/esbuild-wasm@0.20.0/esbuild.wasm'
+          })
+
+          initialized = true
+          setStatus('Ready', 'ready')
+          log('✅ esbuild initialized successfully', 'info')
+        } catch (error) {
+          setStatus('Failed to initialize', 'error')
+          log(`❌ Initialization failed: ${error.message}`, 'error')
+          console.error('esbuild initialization failed:', error)
+        }
+      }
+
+      // Load widget source code
+      async function loadWidgetSource(widgetName) {
+        try {
+          log(`Loading ${widgetName}.tsx...`)
+
+          // Fetch from Express server (port 3001)
+          const response = await fetch(`http://localhost:3001/api/dev/widget-source/${widgetName}`)
+
+          if (!response.ok) {
+            throw new Error(`Failed to fetch widget source: ${response.statusText}`)
+          }
+
+          const code = await response.text()
+          currentCode = code
+          codeEditorEl.textContent = code
+
+          log(`✅ Loaded ${widgetName}.tsx (${code.length} chars)`)
+          return code
+        } catch (error) {
+          log(`❌ Failed to load widget: ${error.message}`, 'error')
+          throw error
+        }
+      }
+
+      // Compile widget
+      async function compileWidget() {
+        if (!initialized) {
+          log('❌ esbuild not initialized yet', 'error')
+          return
+        }
+
+        if (!currentCode) {
+          log('❌ No code to compile', 'error')
+          return
+        }
+
+        try {
+          setStatus('Compiling...', 'compiling')
+          compileBtnEl.disabled = true
+          log(`Compiling ${currentWidget}.tsx...`)
+
+          const startTime = performance.now()
+
+          const result = await esbuildWasm.transform(currentCode, {
+            loader: 'tsx',
+            jsx: 'automatic',
+            jsxImportSource: 'react',
+            target: 'es2020',
+            format: 'esm',
+          })
+
+          const compileTime = Math.round(performance.now() - startTime)
+          log(`✅ Compiled in ${compileTime}ms`)
+
+          // Create blob URL and dynamically import
+          const blob = new Blob([result.code], { type: 'application/javascript' })
+          const url = URL.createObjectURL(blob)
+
+          log('Rendering widget...')
+          const module = await import(url)
+
+          // Clean up old blob URL
+          URL.revokeObjectURL(url)
+
+          // Render widget (assuming default export is a React component)
+          if (module.default) {
+            renderWidget(module.default)
+            log(`✅ Widget rendered successfully`)
+          } else {
+            throw new Error('Widget does not have a default export')
+          }
+
+          setStatus(`Ready (${compileTime}ms)`, 'ready')
+        } catch (error) {
+          setStatus('Compilation failed', 'error')
+          log(`❌ Compilation failed: ${error.message}`, 'error')
+          console.error('Compilation error:', error)
+        } finally {
+          compileBtnEl.disabled = false
+        }
+      }
+
+      // Render widget (React)
+      async function renderWidget(WidgetComponent) {
+        try {
+          // Clear previous content
+          widgetContainerEl.textContent = ''
+
+          // Create root container
+          const root = document.createElement('div')
+          root.id = 'widget-root'
+          root.style.width = '100%'
+          root.style.height = '100%'
+          widgetContainerEl.appendChild(root)
+
+          // Dynamically import React and ReactDOM
+          const React = await import('react')
+          const ReactDOM = await import('react-dom/client')
+
+          // Create React root and render
+          const reactRoot = ReactDOM.createRoot(root)
+          reactRoot.render(React.createElement(WidgetComponent, {
+            name: 'Pikachu',
+            id: 25
+          }))
+
+          log('✅ React component rendered successfully', 'info')
+        } catch (error) {
+          log(`❌ Failed to render React component: ${error.message}`, 'error')
+          console.error('Render error:', error)
+          throw error
+        }
+      }
+
+      // Event listeners
+      widgetSelectEl.addEventListener('change', async (e) => {
+        const widgetName = e.target.value
+        if (!widgetName) return
+
+        currentWidget = widgetName
+        try {
+          await loadWidgetSource(widgetName)
+        } catch (error) {
+          setStatus('Failed to load widget', 'error')
+        }
+      })
+
+      compileBtnEl.addEventListener('click', compileWidget)
+
+      // Allow Cmd+S / Ctrl+S to compile
+      document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+          e.preventDefault()
+          compileWidget()
+        }
+      })
+
+      // Connect to SSE for file change notifications
+      function connectToFileWatcher() {
+        log('Connecting to file watcher...')
+
+        eventSource = new EventSource('http://localhost:3001/api/dev/watch')
+
+        eventSource.onopen = () => {
+          log('✅ Connected to file watcher', 'info')
+          setStatus('Ready (watching)', 'ready')
+        }
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+
+            if (data.type === 'connected') {
+              log('File watcher connected', 'info')
+              return
+            }
+
+            // File change event
+            const { path, type } = data
+
+            log(`File ${type}: ${path}`, 'info')
+
+            // Check if the changed file matches current widget
+            if (currentWidget && path.includes(`${currentWidget}.tsx`)) {
+              log(`🔥 Widget source changed - reloading...`, 'info')
+
+              if (autoCompileEnabled) {
+                // Reload source and recompile
+                setTimeout(async () => {
+                  try {
+                    await loadWidgetSource(currentWidget)
+                    await compileWidget()
+                  } catch (error) {
+                    log(`Failed to auto-compile: ${error.message}`, 'error')
+                  }
+                }, 200) // Small delay to ensure file write is complete
+              }
+            }
+          } catch (error) {
+            log(`Error parsing SSE message: ${error.message}`, 'error')
+          }
+        }
+
+        eventSource.onerror = (error) => {
+          log('❌ File watcher connection error', 'error')
+          console.error('SSE error:', error)
+
+          // Try to reconnect after 3 seconds
+          setTimeout(() => {
+            if (eventSource) {
+              eventSource.close()
+            }
+            connectToFileWatcher()
+          }, 3000)
+        }
+      }
+
+      // Initialize on page load
+      initializeEsbuild()
+      connectToFileWatcher()
+
+      // Cleanup on page unload
+      window.addEventListener('beforeunload', () => {
+        if (eventSource) {
+          eventSource.close()
+        }
+      })
+    </script>
+  </body>
+</html>

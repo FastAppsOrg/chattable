@@ -1,0 +1,193 @@
+.container {
+  position: fixed;
+  background: var(--color-bg-primary, #1a1a1a);
+  border: 1px solid var(--color-border, #333);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+
+.container.dragging {
+  cursor: move;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.container.minimized {
+  width: auto !important;
+  height: auto !important;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--color-bg-secondary, #222);
+  border-bottom: 1px solid var(--color-border, #333);
+  cursor: move;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-primary, #fff);
+}
+
+.dragIcon {
+  color: var(--color-text-secondary, #888);
+  cursor: move;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.controlButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--color-text-secondary, #888);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.controlButton:hover {
+  background: var(--color-bg-hover, rgba(255, 255, 255, 0.1));
+  color: var(--color-text-primary, #fff);
+}
+
+.controlButton:active {
+  transform: scale(0.95);
+}
+
+.content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-secondary, #1e1e1e);
+}
+
+.content > * {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+}
+
+.resizeHandle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+  z-index: 10;
+}
+
+.resizeIcon {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 10px 10px;
+  border-color: transparent transparent var(--color-border, #555) transparent;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.resizeHandle:hover .resizeIcon {
+  opacity: 1;
+  border-bottom-color: var(--color-primary, #3b82f6);
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.container {
+  animation: slideIn 0.3s ease;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .container {
+    max-width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+}
+
+/* Dark mode enhancements */
+@media (prefers-color-scheme: dark) {
+  .container {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  }
+
+  .container.dragging {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+  }
+}
+
+/* Light mode adjustments */
+@media (prefers-color-scheme: light) {
+  .container {
+    background: #fff;
+    border-color: #e0e0e0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  }
+
+  .header {
+    background: #f5f5f5;
+    border-bottom-color: #e0e0e0;
+  }
+
+  .title {
+    color: #333;
+  }
+
+  .dragIcon,
+  .controlButton {
+    color: #666;
+  }
+
+  .controlButton:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #333;
+  }
+
+  .resizeIcon {
+    border-bottom-color: #ccc;
+  }
+
+  .resizeHandle:hover .resizeIcon {
+    border-bottom-color: #3b82f6;
+  }
+}

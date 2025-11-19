@@ -1,0 +1,272 @@
+.git-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  /* Transparent overlay for click-outside detection */
+  background-color: transparent;
+}
+
+.git-modal-content {
+  position: fixed;
+  top: 50px;
+  right: 20px;
+  background: var(--vscode-editor-background, #1e1e1e);
+  border: 1px solid var(--vscode-panel-border, #404040);
+  border-radius: 12px;
+  width: 340px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.git-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: var(--vscode-descriptionForeground, #888);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+  z-index: 1;
+}
+
+.git-modal-close:hover {
+  background-color: var(--vscode-toolbar-hoverBackground, #2a2a2a);
+  color: var(--vscode-editor-foreground, #cccccc);
+}
+
+.git-modal-body {
+  padding: 20px;
+  text-align: left;
+}
+
+/* Header Section */
+.git-modal-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--vscode-panel-border, #404040);
+}
+
+.git-modal-title {
+  margin: 0 0 4px 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--vscode-editor-foreground, #ffffff);
+  letter-spacing: -0.01em;
+}
+
+.git-modal-subtitle {
+  margin: 0;
+  color: var(--vscode-descriptionForeground, #999999);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Status Section */
+.git-status-section {
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.git-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.git-status-badge:has(svg[data-lucide="check"]) {
+  background-color: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.git-status-badge:has(svg[data-lucide="alert-circle"]) {
+  background-color: rgba(255, 152, 0, 0.15);
+  color: #ff9800;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.git-repo-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--vscode-input-background, #2a2a2a);
+  border: 1px solid var(--vscode-input-border, #404040);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, #999999);
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+  width: 100%;
+  text-align: left;
+}
+
+.git-repo-info:hover {
+  background-color: var(--vscode-list-hoverBackground, #2a2a2a);
+  border-color: var(--vscode-focusBorder, #007acc);
+}
+
+.git-repo-name {
+  color: var(--vscode-editor-foreground, #ffffff);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Actions Section */
+.git-actions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.git-action-btn {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.git-action-btn-primary {
+  background-color: var(--vscode-button-background, #007acc);
+  color: var(--vscode-button-foreground, #ffffff);
+}
+
+.git-action-btn-primary:hover:not(:disabled) {
+  background-color: var(--vscode-button-hoverBackground, #005a9e);
+  box-shadow: 0 2px 8px rgba(0, 122, 204, 0.3);
+}
+
+.git-action-btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.git-action-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.git-action-btn-secondary {
+  background-color: transparent;
+  color: var(--vscode-button-foreground, #cccccc);
+  border: 1px solid var(--vscode-panel-border, #404040);
+}
+
+.git-action-btn-secondary:hover:not(:disabled) {
+  background-color: var(--vscode-button-secondaryHoverBackground, #2a2a2a);
+  border-color: var(--vscode-button-border, #555555);
+}
+
+.git-action-btn-secondary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.git-action-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Error Message */
+.git-modal-error {
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background-color: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  border-radius: 6px;
+  color: #f44336;
+  font-size: 12px;
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* Repository Configuration Form */
+.repo-config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--vscode-editor-foreground, #cccccc);
+}
+
+
+/* GitHub Repository Link */
+.github-repo-preview,
+.github-repo-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--vscode-input-background, #2a2a2a);
+  border: 1px solid var(--vscode-input-border, #404040);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  width: 100%;
+  text-align: left;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.github-repo-preview {
+  cursor: default;
+}
+
+.github-repo-link {
+  cursor: pointer;
+}
+
+.github-repo-link:hover {
+  background-color: var(--vscode-list-hoverBackground, #2a2a2a);
+  border-color: var(--vscode-focusBorder, #007acc);
+}
+
+.repo-path {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--vscode-editor-foreground, #ffffff);
+  flex: 1;
+}
+

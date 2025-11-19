@@ -1,0 +1,235 @@
+.preview-mode-selector {
+  position: relative;
+  display: inline-block;
+}
+
+.mode-selector-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--color-bg-tertiary, #2a2a2a);
+  border: none;
+  border-radius: 8px;
+  color: var(--color-text-primary, #f0f0f0);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.mode-selector-trigger:hover:not(:disabled) {
+  background: var(--color-bg-secondary, #333);
+}
+
+.mode-selector-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mode-label {
+  font-size: 13px;
+}
+
+.chevron {
+  transition: transform 0.2s ease;
+  color: var(--color-text-secondary, #888);
+}
+
+.chevron.open {
+  transform: rotate(180deg);
+}
+
+.mode-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  background: var(--color-bg-secondary, #2a2a2a);
+  border: 1px solid var(--color-border-default, #444);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  overflow: hidden;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mode-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--color-bg-tertiary, #1a1a1a);
+  border: none;
+  border-radius: 0px;
+  color: var(--color-text-primary, #f0f0f0);
+  cursor: pointer;
+  text-align: left;
+}
+
+
+.mode-option,
+.mode-option:hover,
+.mode-option.active {
+  background: var(--color-bg-tertiary, #333);
+}
+
+.mode-option.disabled {
+  background: var(--color-bg-secondary, #333);
+}
+
+.mode-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary, #888);
+  flex-shrink: 0;
+}
+
+.mode-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.mode-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary, #f0f0f0);
+}
+
+.mode-desc {
+  font-size: 11px;
+  color: var(--color-text-secondary, #888);
+}
+
+.active-indicator {
+  color: var(--color-primary, #4a9eff);
+  font-size: 14px;
+  font-weight: 500;  /* Medium weight */
+  flex-shrink: 0;
+}
+
+/* Light theme adjustments */
+.theme-light .mode-selector-trigger {
+  background: #f0f0f0;
+  color: #1a1a1a;
+}
+
+.theme-light .mode-selector-trigger:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.theme-light .mode-dropdown {
+  background: #ffffff;
+  border-color: #d0d0d0;
+}
+
+.theme-light .mode-option,
+.theme-light .mode-option:hover,
+.theme-light .mode-option.active {
+  color: #1a1a1a;
+  background: #f5f5f5;
+}
+
+
+.theme-light .mode-option.disabled {
+  background: #e0e0e0;
+  color: #1a1a1a;
+}
+
+.theme-light .mode-name {
+  color: #1a1a1a;
+}
+
+.theme-light .mode-desc {
+  color: #606060;
+}
+
+/* Horizontal Tabs Style */
+.preview-mode-selector-tabs {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  background: var(--color-bg-tertiary, #2a2a2a);
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.mode-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--color-text-secondary, #888);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.mode-tab:hover:not(:disabled):not(.active) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-primary, #f0f0f0);
+}
+
+.mode-tab.active {
+  background: var(--color-bg-primary, #303030);
+  color: var(--color-text-primary, #f0f0f0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mode-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mode-tab .mode-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mode-tab .mode-label {
+  font-size: 13px;
+}
+
+/* Light theme tabs */
+.theme-light .preview-mode-selector-tabs {
+  background: #e8e8e8;
+}
+
+.theme-light .mode-tab {
+  color: #606060;
+}
+
+.theme-light .mode-tab:hover:not(:disabled):not(.active) {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1a1a1a;
+}
+
+.theme-light .mode-tab.active {
+  background: #ffffff;
+  color: #1a1a1a;
+}
