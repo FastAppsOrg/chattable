@@ -26,27 +26,5 @@ export const projects = sqliteTable('projects', {
   deletedAt: integer('deleted_at', { mode: 'timestamp' }),
 });
 
-export const chatMessages = sqliteTable('chat_messages', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  projectId: text('project_id').notNull(),
-  userId: text('user_id'),
-
-  messageId: text('message_id').notNull().unique(),
-  role: text('role', { enum: ['user', 'assistant', 'system'] }).notNull(),
-  content: text('content').notNull(),
-
-  messageType: text('message_type', {
-    enum: ['chat', 'tool', 'system', 'error']
-  }).default('chat'),
-
-  toolInfo: text('tool_info', { mode: 'json' }),
-  metadata: text('metadata', { mode: 'json' }),
-
-  timestamp: integer('timestamp', { mode: 'timestamp' })
-    .$defaultFn(() => new Date()),
-});
-
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
-export type ChatMessage = typeof chatMessages.$inferSelect;
-export type NewChatMessage = typeof chatMessages.$inferInsert;

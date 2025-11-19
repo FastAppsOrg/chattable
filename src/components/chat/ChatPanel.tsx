@@ -3,6 +3,7 @@ import type { ChatPanelProps } from '../../types/chat'
 import { useChat } from '../../hooks/useChat'
 import { useWebSocket } from '../../hooks/useWebSocket'
 import { useAutocomplete } from '../../hooks/useAutocomplete'
+import { useProjectContext } from '../../hooks/useProjectContext'
 import type { ChatMessage as ChatMessageType } from '../../types/chat'
 import { ChatMessage } from './ChatMessage'
 import { SelectedElementsCarousel } from './SelectedElementsCarousel'
@@ -42,6 +43,8 @@ export function ChatPanel({
   // No longer need to handle externalInput - elements shown in carousel only
 
   const { showToast } = useToast()
+  const { syncProjectTitle } = useProjectContext()
+  const firstMessageSentRef = useRef(false)
   const {
     messages,
     loading,
@@ -615,6 +618,22 @@ export function ChatPanel({
       }
 
       console.log('[ChatPanel] Streaming completed, final text length:', accumulatedText.length)
+
+      // Sync project title from Mastra Memory after first message
+      if (!firstMessageSentRef.current && currentProjectId) {
+        firstMessageSentRef.current = true
+        console.log('[ChatPanel] First message completed, syncing thread title...')
+        setTimeout(async () => {
+          try {
+            const title = await syncProjectTitle(currentProjectId)
+            if (title) {
+              console.log('[ChatPanel] Project title synced:', title)
+            }
+          } catch (error) {
+            console.error('[ChatPanel] Failed to sync project title:', error)
+          }
+        }, 2000) // Wait 2 seconds for Mastra to generate title
+      }
     } catch (error: any) {
       console.error('[ChatPanel] Streaming error:', error)
       showToast(`Failed to send message: ${error.message}`, 'error')

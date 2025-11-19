@@ -5,6 +5,7 @@ import type { CreateProjectForm, Project } from '../types/project'
 import { useAuth } from '../hooks/useAuth'
 import { useSecretsStatus } from '../hooks/useSecretsStatus'
 import { ProjectContext } from '@/hooks/useProjectContext'
+import { apiClient } from '../utils/api'
 
 interface ProjectContextType {
   projects: Project[]
@@ -15,6 +16,7 @@ interface ProjectContextType {
   updateProject: (projectId: string, updates: Partial<Project>) => Promise<void>
   deleteProject: (projectId: string) => Promise<void>
   syncProject: (projectId: string) => Promise<void>
+  syncProjectTitle: (projectId: string) => Promise<string | null>
   checkGitHubToken: () => Promise<boolean>
 }
 
@@ -115,6 +117,24 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     [fetchProjects],
   )
 
+  const syncProjectTitle = useCallback(
+    async (projectId: string) => {
+      try {
+        const response = await apiClient.get(`/api/projects/${projectId}/title`)
+        if (response.ok) {
+          const { title } = await response.json()
+          console.log('[ProjectContext] Synced thread title:', title)
+          await fetchProjects()
+          return title
+        }
+      } catch (err) {
+        console.error('[ProjectContext] Failed to sync thread title:', err)
+      }
+      return null
+    },
+    [fetchProjects],
+  )
+
   const deleteProject = useCallback(
     async (projectId: string) => {
       setError(null)
@@ -167,9 +187,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       updateProject,
       deleteProject,
       syncProject,
+      syncProjectTitle,
       checkGitHubToken,
     }),
-    [projects, loading, error, fetchProjects, createProject, updateProject, deleteProject, syncProject, checkGitHubToken],
+    [projects, loading, error, fetchProjects, createProject, updateProject, deleteProject, syncProject, syncProjectTitle, checkGitHubToken],
   )
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>

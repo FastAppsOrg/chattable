@@ -125,10 +125,12 @@ export function useChat(options: UseChatOptions | string) {
       }
 
       // Additional deduplication for same content within 100ms (for StrictMode)
+      // But skip this check if the message has a different ID (different messages can have same content)
       const now = Date.now()
       if (
         message.content === lastMessageRef.current.content &&
-        now - lastMessageRef.current.timestamp < 100
+        now - lastMessageRef.current.timestamp < 100 &&
+        !messageIdsRef.current.has(message.id)  // Only skip if we haven't seen this ID before
       ) {
         console.log('[useChat] Duplicate content within 100ms, skipping')
         return prev

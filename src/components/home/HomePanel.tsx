@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { API_ENDPOINTS } from '../../constants/api'
 
 interface HomePanelProps {
-  onCreate: (form: CreateProjectForm) => Promise<void>
+  onCreate: (form: CreateProjectForm, initialPrompt?: string) => Promise<void>
   loading: boolean
   githubUsername?: string
   onOpenSettings?: (tab?: 'claude' | 'secrets' | 'agents' | 'mcp' | 'commands') => void
@@ -69,11 +69,11 @@ export function HomePanel({
       return
     }
 
-    // Always create a new quick start project
-    await handleQuickStart()
+    // Always create a new quick start project with the user's message
+    await handleQuickStart(message)
   }
 
-  const handleQuickStart = async () => {
+  const handleQuickStart = async (initialMessage?: string) => {
     // Critical: Prevent double submission with ref-based guard
     if (loading || isCreatingRef.current) {
       console.warn('Project creation already in progress, ignoring duplicate call')
@@ -90,7 +90,7 @@ export function HomePanel({
         git_branch: 'main',
       }
 
-      await onCreate(form)
+      await onCreate(form, initialMessage)
       // Don't reset form here - user is being navigated away
       // isCreatingRef will be reset when component unmounts or returns to this page
     } catch (error) {

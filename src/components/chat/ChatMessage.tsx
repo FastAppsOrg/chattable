@@ -128,9 +128,7 @@ export const ChatMessage = memo(function ChatMessage({ message, onApplyPrompt, i
     <div className={messageClass} style={{ opacity: isPending ? 0.5 : 1 }}>
       <div className={isThinking ? "message-content typing" : "message-content"}>
         {message.role === 'assistant' ? (
-          isThinking ? (
-            <span>Thinking</span>
-          ) : (
+          (!isThinking) && (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{

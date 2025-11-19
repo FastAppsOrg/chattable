@@ -1,5 +1,5 @@
 import { db } from './index';
-import { projects, chatMessages, type Project, type NewProject, type ChatMessage, type NewChatMessage } from './schema';
+import { projects, type Project, type NewProject } from './schema';
 import { eq, and, isNull, desc } from 'drizzle-orm';
 
 export class DatabaseService {
@@ -67,6 +67,9 @@ export class DatabaseService {
       .where(and(...conditions));
   }
 
+  /**
+   * @deprecated Use Mastra Memory instead. Messages are automatically saved when using agent.stream() with memory context.
+   */
   async saveChatMessage(message: NewChatMessage): Promise<ChatMessage | null> {
     try {
       const [saved] = await db.insert(chatMessages).values(message).returning();
@@ -79,42 +82,6 @@ export class DatabaseService {
     }
   }
 
-  async getChatHistory(
-    projectId: string,
-    userId?: string,
-    options?: { limit?: number; before?: Date }
-  ): Promise<ChatMessage[]> {
-    const conditions = userId
-      ? and(eq(chatMessages.projectId, projectId), eq(chatMessages.userId, userId))
-      : eq(chatMessages.projectId, projectId);
-
-    const baseQuery = db.select()
-      .from(chatMessages)
-      .where(conditions)
-      .orderBy(chatMessages.timestamp);
-
-    if (options?.limit) {
-      return baseQuery.limit(options.limit);
-    }
-
-    return baseQuery;
-  }
-
-  async deleteChatHistory(projectId: string, userId?: string): Promise<void> {
-    const conditions = userId
-      ? [eq(chatMessages.projectId, projectId), eq(chatMessages.userId, userId)]
-      : [eq(chatMessages.projectId, projectId)];
-
-    await db.delete(chatMessages).where(and(...conditions));
-  }
-
-  async deleteChatMessage(messageId: string, userId?: string): Promise<void> {
-    const conditions = userId
-      ? [eq(chatMessages.messageId, messageId), eq(chatMessages.userId, userId)]
-      : [eq(chatMessages.messageId, messageId)];
-
-    await db.delete(chatMessages).where(and(...conditions));
-  }
 }
 
 export const dbService = new DatabaseService();

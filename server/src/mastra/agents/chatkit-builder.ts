@@ -1,4 +1,4 @@
-import { Agent } from '@mastra/core'
+import { Agent } from '@mastra/core/agent'
 import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
 import fs from 'fs/promises'

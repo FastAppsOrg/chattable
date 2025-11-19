@@ -142,6 +142,42 @@ export function createProjectsRoutes(
   });
 
   /**
+   * GET /api/projects/:projectId/title
+   * Get auto-generated thread title from Mastra Memory
+   */
+  router.get('/:projectId/title', async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.params;
+      const user = (req as any).user;
+
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const project = await dbService.getProject(projectId, user.id);
+
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const { MemoryService } = await import('../services/memory.service.js');
+      const title = await MemoryService.getThreadTitle(projectId, user.id);
+
+      if (!title) {
+        return res.status(404).json({ error: 'Thread title not generated yet' });
+      }
+
+      // Update project name with the thread title
+      await dbService.updateProject(projectId, user.id, { name: title });
+
+      return res.json({ title });
+    } catch (error: any) {
+      console.error('[Projects] Error fetching thread title:', error);
+      return res.status(500).json({ error: error.message || 'Failed to fetch thread title' });
+    }
+  });
+
+  /**
    * GET /api/projects/:id/status
    * Get project connection status
    */
@@ -1081,19 +1117,22 @@ export function createProjectsRoutes(
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const messages = await dbService.getChatHistory(projectId, user.id);
+      // Get messages from Mastra Memory (threadId = projectId, resourceId = userId)
+      const { MemoryService } = await import('../services/memory.service.js');
+      const mastraMessages = await MemoryService.getThreadMessages(projectId, user.id);
 
-      res.json({
-        messages: messages.map((msg: any) => ({
-          message_id: msg.message_id,
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp,
-          message_type: msg.message_type,
-          tool_info: msg.tool_info,
-          metadata: msg.metadata,
-        })),
-      });
+      // Transform Mastra messages to match frontend format
+      const messages = mastraMessages.map((msg: any) => ({
+        message_id: msg.id || `msg-${Date.now()}-${Math.random()}`,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp || new Date().toISOString(),
+        message_type: 'chat', // Mastra messages are always chat type
+        tool_info: null, // Tool info not stored in Mastra Memory
+        metadata: {},
+      }));
+
+      res.json({ messages });
     } catch (error: any) {
       console.error('[Chat] Failed to get chat history:', error);
       res.status(500).json({
@@ -1105,27 +1144,14 @@ export function createProjectsRoutes(
 
   /**
    * DELETE /api/projects/:projectId/chat/history
-   * Clear all chat messages for a project
+   * Mastra Memory does not support clearing individual threads
+   * This endpoint is no longer supported
    */
   router.delete('/:projectId/chat/history', async (req: Request, res: Response) => {
-    try {
-      const { projectId } = req.params;
-      const user = (req as any).user;
-
-      if (!user) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-
-      await dbService.deleteChatHistory(projectId, user.id);
-
-      res.json({ success: true, message: 'Chat history cleared' });
-    } catch (error: any) {
-      console.error('[Chat] Failed to delete chat history:', error);
-      res.status(500).json({
-        error: 'Failed to delete chat history',
-        message: error.message,
-      });
-    }
+    res.status(501).json({
+      error: 'Chat history clearing is not supported with Mastra Memory',
+      message: 'Messages are managed by Mastra Memory and cannot be individually cleared'
+    });
   });
 
   /**
@@ -1157,29 +1183,15 @@ export function createProjectsRoutes(
         return res.status(400).json({ error: 'Project MCP server not available' });
       }
 
-      const userMessageId = `user-msg-${Date.now()}`;
-      const userMessageTimestamp = new Date();
-
-      try {
-        await dbService.saveChatMessage({
-          projectId,
-          userId: user.id,
-          messageId: userMessageId,
-          role: 'user',
-          content: message,
-          messageType: 'chat',
-          timestamp: userMessageTimestamp,
-        });
-      } catch (saveError: any) {
-        console.error('[Chat] Failed to save user message:', saveError);
-      }
+      // Note: Messages are now automatically saved by Mastra Memory
+      // No need to manually save to chatMessages table
 
       const mcpTools = await mcpService.getTools(project.mcpEphemeralUrl);
-      const { createCodeEditorAgent } = await import('../mastra/agents/code-editor.js');
+      const { MemoryService } = await import('../services/memory.service.js');
+      const { createCodeEditorAgent, streamCodeEditing } = await import('../mastra/agents/code-editor.js');
 
-      const agent = createCodeEditorAgent(mcpTools);
-
-      const stream = await agent.stream(message);
+      const memory = MemoryService.getMemory();
+      const agent = createCodeEditorAgent(mcpTools, memory);
 
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       res.setHeader('Cache-Control', 'no-cache');
@@ -1189,27 +1201,14 @@ export function createProjectsRoutes(
       try {
         let accumulatedResponse = '';
 
-        for await (const textChunk of stream.textStream) {
+        // Stream with memory context (messages auto-saved by Mastra)
+        for await (const textChunk of streamCodeEditing(agent, message, projectId, user.id)) {
           accumulatedResponse += textChunk;
           res.write(textChunk);
         }
 
         res.end();
-
-        const assistantMessageId = `assistant-${Date.now()}`;
-        try {
-          await dbService.saveChatMessage({
-            projectId,
-            userId: user.id,
-            messageId: assistantMessageId,
-            role: 'assistant',
-            content: accumulatedResponse,
-            messageType: 'chat',
-            timestamp: new Date(),
-          });
-        } catch (saveError: any) {
-          console.error('[Chat] Failed to save assistant response:', saveError);
-        }
+        console.log('[Chat] Stream completed, response saved to Mastra Memory automatically');
       } catch (streamError: any) {
         console.error('[Chat] Stream error:', streamError);
         if (!res.headersSent) {

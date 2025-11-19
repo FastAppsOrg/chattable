@@ -2,6 +2,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { IncomingMessage } from 'http';
 import type { DatabaseService } from '../db/db.service.js';
 import { MCPService } from './mcp.service.js';
+import { MemoryService } from './memory.service.js';
 import { createCodeEditorAgent, streamCodeEditing } from '../mastra/agents/code-editor.js';
 
 interface ChatWebSocketMessage {
@@ -165,11 +166,17 @@ export class ChatWebSocketService {
       const mcpTools = await this.mcpService.getTools(project.mcpEphemeralUrl);
       console.log(`[ChatWS] Loaded ${mcpTools.length} MCP tools for project ${projectId}`);
 
-      // Create agent with MCP tools
-      const codeAgent = createCodeEditorAgent(mcpTools);
-      console.log(`[ChatWS] Created code editor agent`);
+      // Get Memory instance for conversation persistence
+      const memory = MemoryService.getMemory();
+      console.log(`[ChatWS] Memory service ready`);
 
-      // Stream response
+      // Create agent with MCP tools and Memory
+      const codeAgent = createCodeEditorAgent(mcpTools, memory);
+      console.log(`[ChatWS] Created code editor agent with memory`);
+
+      // Stream response with memory context
+      // threadId = projectId (group messages by project)
+      // resourceId = userId (identify user across projects)
       const messageId = `msg_${Date.now()}`;
       let accumulatedContent = '';
       let chunkCount = 0;
@@ -177,7 +184,7 @@ export class ChatWebSocketService {
       console.log(`[ChatWS] Starting to stream response for message: "${text.substring(0, 50)}..." with ID: ${messageId}`);
 
       try {
-        for await (const chunk of streamCodeEditing(codeAgent, text)) {
+        for await (const chunk of streamCodeEditing(codeAgent, text, projectId, userId)) {
           accumulatedContent += chunk;
           chunkCount++;
           console.log(`[ChatWS] Chunk #${chunkCount}: +${chunk.length} chars (total: ${accumulatedContent.length} chars), sending with ID: ${messageId}`);
