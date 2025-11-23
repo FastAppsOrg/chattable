@@ -150,6 +150,8 @@ export function createProjectsRoutes(
       const { projectId } = req.params;
       const user = (req as any).user;
 
+      console.log(`[Projects] GET /:projectId/title called for project ${projectId}, user ${user?.id}`);
+
       if (!user) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
@@ -157,19 +159,24 @@ export function createProjectsRoutes(
       const project = await dbService.getProject(projectId, user.id);
 
       if (!project) {
+        console.log(`[Projects] Project ${projectId} not found`);
         return res.status(404).json({ error: 'Project not found' });
       }
 
+      console.log(`[Projects] Fetching title from Mastra Memory for thread ${projectId}, resource ${user.id}`);
       const { MemoryService } = await import('../services/memory.service.js');
       const title = await MemoryService.getThreadTitle(projectId, user.id);
 
       if (!title) {
+        console.log(`[Projects] Thread title not generated yet for project ${projectId}`);
         return res.status(404).json({ error: 'Thread title not generated yet' });
       }
 
+      console.log(`[Projects] Got title from Mastra: "${title}", updating project name...`);
       // Update project name with the thread title
       await dbService.updateProject(projectId, user.id, { name: title });
 
+      console.log(`[Projects] Project name updated successfully to "${title}"`);
       return res.json({ title });
     } catch (error: any) {
       console.error('[Projects] Error fetching thread title:', error);

@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import type { ChatPanelProps } from '../../types/chat'
 import { useChat } from '../../hooks/useChat'
-import { useWebSocket } from '../../hooks/useWebSocket'
-import { useAutocomplete } from '../../hooks/useAutocomplete'
 import { useProjectContext } from '../../hooks/useProjectContext'
 import type { ChatMessage as ChatMessageType } from '../../types/chat'
 import { ChatMessage } from './ChatMessage'
@@ -29,7 +27,6 @@ export function ChatPanel({
     console.log('[ChatPanel] projectId:', projectId, 'type:', typeof projectId)
   }, [projectId])
   const [input, setInput] = useState('')
-  const [isAborting, setIsAborting] = useState(false)
   const [textareaHeight, setTextareaHeight] = useState(80)
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [compressedImagesPreview, setCompressedImagesPreview] = useState<CompressedImage[]>([])
@@ -56,71 +53,8 @@ export function ChatPanel({
     // setError - not used in this implementation
   } = useChat(currentProjectId!)
 
-  const handleMessage = (message: any) => {
-    addMessage(message)
 
-    // Check if it's an error message from torch agent
-    if (message.messageType === 'system') {
-      if (message.content?.includes('Anthropic API credit balance is too low')) {
-        showToast('Anthropic API credit balance is too low. Please add credits to continue using Torch agent features.', 'error')
-      }
 
-      // Detect Usage Policy violations (auto-recovery happens in backend)
-      if (message.content?.toLowerCase().includes('usage policy') ||
-          message.content?.toLowerCase().includes('unable to respond')) {
-        showToast('Request blocked by usage policy. The agent will automatically reconnect and retry.', 'warning')
-      }
-    }
-  }
-
-  const handleStreamingUpdate = (_content: string) => {
-    // Handle streaming content updates if needed
-  }
-
-  const handleProcessingUpdate = (loading: boolean, _activeToolIds: Set<string>) => {
-    setLoading(loading)
-  }
-
-  // We need to use a ref to pass wsService to autocomplete (to avoid circular dependency)
-  const wsRef = useRef<any>(null)
-
-  const {
-    showAutocomplete,
-    autocompleteType,
-    autocompleteItems,
-    selectedIndex,
-    handleInputChange: handleAutocompleteInputChange,
-    selectAutocompleteItem,
-    handleKeyDown: handleAutocompleteKeyDown,
-    setSelectedIndex,
-    handleFileResults,
-    handleCommandResults,
-  } = useAutocomplete(currentProjectId!, () => wsRef.current)
-
-  const {
-    connected,
-    isProcessing: webSocketLoading,
-    sendMessage: sendWebSocketMessage,
-    sendAbort,
-    wsService,
-  } = useWebSocket(
-    currentProjectId!,
-    handleMessage,
-    handleStreamingUpdate,
-    handleProcessingUpdate,
-    handleFileResults,
-    handleCommandResults,
-    () => {
-      // Sandbox not ready - trigger /status polling by calling API
-      console.log('Chat WebSocket closed with 4004, triggering /status check')
-      apiClient.get(API_ENDPOINTS.projectStatus(currentProjectId!)).catch(console.error)
-    },
-  )
-
-  // Update ref when wsService changes
-  useEffect(() => {
-    wsRef.current = wsService
-  }, [wsService])
 
   // Reset textarea height on mount and cleanup debounce timer on unmount
   useEffect(() => {
@@ -155,12 +89,17 @@ export function ChatPanel({
       return
     }
 
+    // Check if there are any user messages already (not just assistant welcome message)
+    const hasUserMessages = messages.some(msg => msg.role === 'user')
+    if (hasUserMessages) {
+      // Mark that first message was already sent (from history)
+      firstMessageSentRef.current = true
+    }
+
     const storageKey = `initial_prompt_${currentProjectId}`
     const initialPrompt = sessionStorage.getItem(storageKey)
 
     if (initialPrompt && initialPrompt.trim()) {
-      // Check if there are any user messages already (not just assistant welcome message)
-      const hasUserMessages = messages.some(msg => msg.role === 'user')
       if (hasUserMessages) {
         return
       }
@@ -269,6 +208,20 @@ export function ChatPanel({
       setLoading(false)
       isSendingRef.current = false
       console.log('[ChatPanel] sendInitialPrompt completed successfully')
+
+      // Sync project title after first message
+      if (!firstMessageSentRef.current && currentProjectId) {
+        firstMessageSentRef.current = true
+        console.log('[ChatPanel] First message sent, syncing project title...')
+        setTimeout(async () => {
+          try {
+            await syncProjectTitle(currentProjectId)
+            console.log('[ChatPanel] Project title synced successfully')
+          } catch (error) {
+            console.error('[ChatPanel] Failed to sync project title:', error)
+          }
+        }, 2000) // Wait 2s for Mastra to generate title
+      }
     } catch (error) {
       console.error('[ChatPanel] Failed to send initial prompt:', error)
       setThinkingMessageId(null)
@@ -289,16 +242,9 @@ export function ChatPanel({
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
-    const cursorPosition = e.target.selectionStart
 
     // Update input value immediately for responsive typing
     setInput(value)
-
-    // Only run autocomplete logic if @ or / might be present (quick check)
-    const hasAutocompleteTrigger = value.includes('@') || value.includes('/')
-    if (hasAutocompleteTrigger) {
-      handleAutocompleteInputChange(value, cursorPosition)
-    }
 
     // Debounce height calculation to reduce re-renders
     const textarea = e.target
@@ -313,19 +259,9 @@ export function ChatPanel({
     heightDebounceTimer.current = setTimeout(() => {
       setTextareaHeight(newHeight)
     }, 50)
-  }, [handleAutocompleteInputChange])
+  }, [])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    const { handled, newInput } = handleAutocompleteKeyDown(e, input)
-    if (handled) {
-      if (newInput !== undefined) {
-        setInput(newInput)
-        // Focus back on input
-        setTimeout(() => inputRef.current?.focus(), 0)
-      }
-      return
-    }
-
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSendMessage()
@@ -584,6 +520,37 @@ export function ChatPanel({
             }
             addMessage(streamMessage)
           }
+
+          // Sync project title after first message completes
+          if (!firstMessageSentRef.current && currentProjectId) {
+            firstMessageSentRef.current = true
+            console.log('[ChatPanel] First message completed, polling for project title...')
+
+            // Poll for title generation (Mastra generates title asynchronously)
+            const pollTitle = async (attempt = 1, maxAttempts = 20) => {
+              try {
+                const title = await syncProjectTitle(currentProjectId)
+                if (title) {
+                  console.log(`[ChatPanel] Project title synced successfully after ${attempt} attempts: "${title}"`)
+                  return
+                }
+
+                // Title not generated yet, retry
+                if (attempt < maxAttempts) {
+                  console.log(`[ChatPanel] Title not ready, retrying (${attempt}/${maxAttempts})...`)
+                  setTimeout(() => pollTitle(attempt + 1, maxAttempts), 500) // Check every 500ms
+                } else {
+                  console.warn('[ChatPanel] Title generation timeout after 10s')
+                }
+              } catch (error) {
+                console.error('[ChatPanel] Failed to sync project title:', error)
+              }
+            }
+
+            // Start polling after a brief delay to let Mastra start processing
+            setTimeout(() => pollTitle(), 500)
+          }
+
           break
         }
 
@@ -649,31 +616,10 @@ export function ChatPanel({
     }
   }
 
-  const handleAbortRequest = async () => {
-    // Can only abort if processing and connected
-    if ((!loading && !webSocketLoading) || !connected || isAborting) return
-
-    setIsAborting(true)
-    // Use WebSocket abort instead of REST API
-    sendAbort()
-
-    // Reset aborting state after a short delay
-    setTimeout(() => {
-      setIsAborting(false)
-    }, 1500)
-  }
-
   const applyTorchSuggestion = useCallback((prompt: string) => {
     setInput(prompt)
     inputRef.current?.focus()
   }, [])
-
-  const handleAutocompleteSelect = (item: any) => {
-    const newInput = selectAutocompleteItem(item, input)
-    setInput(newInput)
-    // Focus back on input
-    setTimeout(() => inputRef.current?.focus(), 0)
-  }
 
   // Removed unused functions - handleLogout and handleNavigate
   // These were not being used in the component
@@ -804,7 +750,6 @@ export function ChatPanel({
                 ? 'Queue more tasks to be executed (@ for files, / for commands)'
                 : 'Ask me to help with your code... (@ for files, / for commands, paste images)'
             }
-            disabled={!connected}
             style={{
               height: `${textareaHeight}px`,
             }}
@@ -830,7 +775,7 @@ export function ChatPanel({
                   type="button"
                   className="action-button image-button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={loading || webSocketLoading || !connected}
+                  disabled={loading}
                   title="Attach images"
                 >
                   <ImagePlus size={16} />
@@ -839,20 +784,10 @@ export function ChatPanel({
                   )}
               </button>
 
-              {loading && (
-                <button
-                  className="action-button abort-button"
-                  onClick={handleAbortRequest}
-                  disabled={isAborting}
-                >
-                  {isAborting ? 'Aborting...' : 'Stop'}
-                </button>
-              )}
-
               <button
                 className="action-button send-button"
                 onClick={handleSendMessage}
-                disabled={loading || webSocketLoading || !connected || !input.trim() || isAborting}
+                disabled={loading || !input.trim()}
               >
                 <ArrowUp size={18} />
               </button>

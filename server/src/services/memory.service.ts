@@ -66,15 +66,20 @@ export class MemoryService {
     resourceId: string
   ): Promise<string | null> {
     try {
+      console.log(`[MemoryService] getThreadTitle called for thread ${threadId}, resource ${resourceId}`);
       const memory = await this.getMemory();
-      const storage = (memory as any).storage;
 
-      if (!storage || typeof storage.getThread !== 'function') {
-        console.warn('[MemoryService] Storage does not support getThread');
-        return null;
-      }
+      // Use getThreadById() to get thread information including title
+      const thread = await memory.getThreadById({ threadId });
 
-      const thread = await storage.getThread({ threadId, resourceId });
+      console.log(`[MemoryService] getThreadById() result:`, {
+        hasThread: !!thread,
+        title: thread?.title,
+        threadId: thread?.id,
+        resourceId: thread?.resourceId
+      });
+
+      // Return the thread title if available
       return thread?.title || null;
     } catch (error) {
       console.error('[MemoryService] Error getting thread title:', error);

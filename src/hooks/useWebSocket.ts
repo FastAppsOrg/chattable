@@ -11,6 +11,7 @@ export function useWebSocket(
   onFileResults?: (files: any[], query: string) => void,
   onCommandResults?: (commands: any[], query: string) => void,
   onSandboxNotReady?: () => void,
+  onComplete?: () => void,
 ) {
   const [connected, setConnected] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
@@ -78,6 +79,8 @@ export function useWebSocket(
         setIsProcessing(false)
         onStreamingUpdate?.('')
         onProcessingUpdate?.(false, new Set())
+        // Notify parent component
+        onComplete?.()
       },
       onError: (error: string) => {
         console.error('Chat WebSocket error:', error)

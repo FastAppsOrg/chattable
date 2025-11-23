@@ -20,6 +20,7 @@ interface ProjectContextType {
   updateProject: (projectId: string, updates: Partial<Project>) => Promise<void>
   deleteProject: (projectId: string) => Promise<void>
   syncProject: (projectId: string) => Promise<void>
+  syncProjectTitle: (projectId: string) => Promise<string | null>
   checkGitHubToken: () => Promise<boolean>
 }
 

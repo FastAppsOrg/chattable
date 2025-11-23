@@ -6,6 +6,7 @@ export const API_ENDPOINTS = {
   projects: '/api/projects',
   project: (id: string) => `/api/projects/${id}`,
   projectStatus: (id: string) => `/api/projects/${id}/status`,
+  projectSyncTitle: (id: string) => `/api/projects/${id}/title`,
 
   // Chat endpoints
   projectChat: (projectId: string) => `/api/projects/${projectId}/chat`, // HTTP streaming endpoint
