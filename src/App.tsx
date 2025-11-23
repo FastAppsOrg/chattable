@@ -38,12 +38,13 @@ function AppContent() {
     clearSelection: clearProjectSelection,
   } = useProject()
 
-  const { createProject, projects: contextProjects } = useProjectContext()
-  
+  const { createProject, projects: contextProjects, loading: contextLoading } = useProjectContext()
+
   // Use context projects if available, otherwise use local projects
   const projects = contextProjects.length > 0 ? contextProjects : localProjects
 
-  const loading = projectLoading
+  // Combine both loading states: projectLoading (for fetch) and contextLoading (for create)
+  const loading = projectLoading || contextLoading
 
   const connectToProject = (project: any) => {
     selectProject(project)

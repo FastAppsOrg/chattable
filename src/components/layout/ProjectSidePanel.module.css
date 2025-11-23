@@ -1,9 +1,10 @@
 .container {
   height: 100%;
   background: var(--color-bg-primary);
-  border-right: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--color-border-default);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .content {
@@ -11,23 +12,55 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+
+/* Custom scrollbar for content */
+.content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: var(--radius-full);
+  transition: background var(--duration-fast);
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
+}
+
+.content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-default) transparent;
 }
 
 .header {
-  padding: var(--spacing-sm) var(--spacing-md);
-  min-height: 48px;
+  padding: var(--spacing-sm);
+  min-height: 56px;
   justify-content: space-between;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-default);
+  flex-shrink: 0;
 }
 
 .title {
-  font-size: 18px;
-  font-weight: 450;  /* OpenAI-style lighter weight */
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   margin: 0;
   cursor: pointer;
+  letter-spacing: var(--letter-spacing-tight);
+  transition: color var(--duration-fast) var(--easing-default);
+}
+
+.title:hover {
+  color: var(--color-primary);
 }
 
 .loading,
@@ -69,11 +102,12 @@
 
 /* Projects container */
 .projectsContainer {
-  padding: 8px;
+  padding: var(--spacing-xs);
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  gap: var(--spacing-1);
 }
 
 /* Lock icon for non-authenticated state */
@@ -89,69 +123,69 @@
   opacity: 0.5;
 }
 
-/* Project Styles */
+/* Project Styles - OpenAI Design System */
 .project {
-  margin-bottom: 4px;
-  border-radius: 6px;
-  transition: background-color 0.2s;
+  margin-bottom: var(--spacing-1);
+  border-radius: var(--radius-md);
+  transition: all var(--duration-fast) var(--easing-default);
   cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
 }
 
 .project:hover {
-  background: var(--color-bg-hover);
+  background: var(--color-hover-bg);
 }
 
 .project.active {
-  background: var(--color-bg-active);
+  background: var(--color-active-bg);
+  border-color: var(--color-border-default);
 }
 
 .project.selected {
-  background: var(--color-primary);
-  background-opacity: 0.1;
-  border: 1px solid var(--color-primary);
+  background: var(--color-info-bg);
+  border: 1px solid var(--color-info-border);
 }
 
 .projectHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.15s;
+  border-radius: var(--radius-md);
+  transition: all var(--duration-fast) var(--easing-default);
   user-select: none;
-  min-height: 48px;
-}
-
-.projectHeader:hover {
-  background: var(--color-bg-hover);
+  min-height: 52px;
+  gap: var(--spacing-xs);
 }
 
 .projectTitle {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   flex: 1;
+  min-width: 0;
 }
 
 .expandIcon {
   display: flex;
   align-items: center;
-  color: var(--color-text-tertiary);
-  transition: transform 0.15s;
+  color: var(--color-icon-tertiary);
+  transition: transform var(--duration-fast) var(--easing-default);
 }
 
 .projectName {
-  font-size: 13px;
-  font-weight: 500;  /* Medium for small text */
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-tight);
 }
 
 .projectInfo {
-  margin-left: 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-1);
   flex: 1;
   min-width: 0;
 }
@@ -159,18 +193,19 @@
 .projectMeta {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
   overflow: hidden;
 }
 
 .projectUrl {
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 140px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
 }
 
 .projectDot {
@@ -204,26 +239,27 @@
 }
 
 .projectMenu {
-  background: none;
+  background: transparent;
   border: none;
-  color: var(--color-text-tertiary);
+  color: var(--color-icon-tertiary);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: var(--spacing-1);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
+  justify-content: center;
   opacity: 0;
-  transition:
-    opacity 0.15s,
-    background 0.15s;
+  transition: all var(--duration-fast) var(--easing-default);
 }
 
+.project:hover .projectMenu,
 .projectHeader:hover .projectMenu {
   opacity: 1;
 }
 
 .projectMenu:hover {
-  background: var(--color-bg-tertiary);
+  background: var(--color-hover-bg);
+  color: var(--color-icon-primary);
 }
 
 /* Workspace Styles */
@@ -349,30 +385,36 @@
 
 /* Status Indicator */
 .statusIndicator {
-  margin-left: auto;
   display: flex;
   align-items: center;
+  justify-content: center;
+  margin-left: var(--spacing-1);
+  flex-shrink: 0;
 }
 
 .runningDot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--color-success);
-  animation: pulse 2s infinite;
+  background: var(--color-status-success);
+  animation: pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(8, 150, 53, 0.4);
 }
 
 .initializingSpinner {
-  width: 8px;
-  height: 8px;
-  border: 2px solid var(--color-warning);
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-status-warning);
   border-top-color: transparent;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
-  to {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
     transform: rotate(360deg);
   }
 }
@@ -380,12 +422,15 @@
 @keyframes pulse {
   0% {
     opacity: 1;
+    box-shadow: 0 0 0 0 rgba(8, 150, 53, 0.4);
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.7;
+    box-shadow: 0 0 0 3px rgba(8, 150, 53, 0);
   }
   100% {
     opacity: 1;
+    box-shadow: 0 0 0 0 rgba(8, 150, 53, 0);
   }
 }
 
@@ -432,60 +477,65 @@
 /* Footer styles */
 .footer {
   margin-top: auto;
-  padding: 8px;
-  border-top: 1px solid var(--color-border-subtle);
+  padding: var(--spacing-xs);
+  border-top: 1px solid var(--color-border-default);
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-1);
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .footerButton {
   flex: 1;
   background: transparent;
   border: none;
-  color: var(--color-text-secondary);
+  color: var(--color-icon-secondary);
   cursor: pointer;
-  padding: 8px;
-  border-radius: 6px;
-  transition: all 0.2s;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-md);
+  transition: all var(--duration-fast) var(--easing-default);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .footerButton:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
+  background: var(--color-hover-bg);
+  color: var(--color-icon-primary);
 }
 
 /* Branch-related styles */
 .headerAction {
   background: transparent;
   border: none;
-  color: var(--color-text-secondary);
+  color: var(--color-icon-secondary);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
+  padding: var(--spacing-1);
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast) var(--easing-default);
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .headerAction:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
+  background: var(--color-hover-bg);
+  color: var(--color-icon-primary);
 }
 
 .projectIcon {
   display: flex;
   align-items: center;
-  color: var(--color-text-secondary);
+  justify-content: center;
+  color: var(--color-icon-secondary);
+  flex-shrink: 0;
 }
 
 .projectActions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-1);
+  flex-shrink: 0;
 }
 
 .syncButton,
@@ -709,104 +759,116 @@
   position: absolute;
   top: 100%;
   right: 0;
-  background: var(--color-bg-primary);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  min-width: 150px;
-  z-index: 100;
-  margin-top: 4px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 160px;
+  z-index: var(--z-dropdown);
+  margin-top: var(--spacing-1);
+  overflow: hidden;
 }
 
 .dropdownItem {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: none;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: transparent;
   border: none;
   color: var(--color-text-primary);
-  font-size: 13px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all var(--duration-fast) var(--easing-default);
   width: 100%;
   text-align: left;
 }
 
 .dropdownItem:hover {
-  background: var(--color-bg-hover);
+  background: var(--color-hover-bg);
 }
 
 .dropdownItem.danger {
-  color: var(--color-danger);
+  color: var(--color-error);
 }
 
 .dropdownItem.danger:hover {
-  background: var(--color-danger-bg, rgba(220, 38, 38, 0.1));
+  background: var(--color-error-bg);
 }
 
 /* Icon button styles */
 .iconButton {
-  background: none;
+  background: transparent;
   border: none;
-  color: var(--color-text-tertiary);
+  color: var(--color-icon-tertiary);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: var(--spacing-1);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  transition: all 0.15s;
+  justify-content: center;
+  transition: all var(--duration-fast) var(--easing-default);
 }
 
 .iconButton:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
+  background: var(--color-hover-bg);
+  color: var(--color-icon-primary);
 }
 
 /* Edit input styles */
 .projectNameEdit {
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-primary);
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 13px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-focus);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-1) var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   outline: none;
   flex: 1;
   min-width: 0;
+  transition: all var(--duration-fast) var(--easing-default);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+
+.projectNameEdit:focus {
+  border-color: var(--color-border-focus);
 }
 
 /* Skeleton loading styles */
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--color-bg-tertiary) 25%,
-    var(--color-bg-hover) 50%,
-    var(--color-bg-tertiary) 75%
+    var(--color-bg-secondary) 0%,
+    var(--color-bg-tertiary) 50%,
+    var(--color-bg-secondary) 100%
   );
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 6px;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
 }
 
 .skeletonProject {
-  padding: 8px 10px;
-  margin-bottom: 4px;
-  min-height: 48px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin-bottom: var(--spacing-1);
+  min-height: 52px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-xs);
 }
 
 .skeletonIcon {
   width: 16px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
 }
 
 .skeletonText {
   flex: 1;
-  height: 12px;
+  height: 14px;
+  border-radius: var(--radius-sm);
 }
 
 @keyframes shimmer {

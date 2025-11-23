@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { ArrowUp } from 'lucide-react'
+import { ArrowUp, Loader2 } from 'lucide-react'
 import styles from './HomeChatInput.module.css'
 
 interface HomeChatInputProps {
@@ -145,9 +145,13 @@ export function HomeChatInput({
           onClick={handleSubmit}
           disabled={disabled || !input.trim()}
           className={styles.sendButton}
-          aria-label="Send message"
+          aria-label={disabled ? "Creating project..." : "Send message"}
         >
-          <ArrowUp size={16} strokeWidth={2.5} />
+          {disabled ? (
+            <Loader2 size={16} className={styles.spinner} />
+          ) : (
+            <ArrowUp size={16} strokeWidth={2.5} />
+          )}
         </button>
       </div>
     </div>

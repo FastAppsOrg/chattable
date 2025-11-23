@@ -85,6 +85,8 @@
   --color-bg-tertiary: #f3f3f3;
   --color-bg-elevated: #ffffff;
   --color-bg-overlay: rgba(255, 255, 255, 0.95);
+  --color-bg-hover: #f7f7f7;
+  --color-bg-active: #efefef;
 
   /* Text Colors */
   --color-text-primary: #0d0d0d;

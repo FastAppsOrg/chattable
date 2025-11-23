@@ -68,38 +68,39 @@
   flex-shrink: 0;
   width: 32px;
   height: 32px;
-  background: #0D0D0D;
-  color: #ffffff;
+  background: var(--color-primary);
+  color: var(--color-text-inverted);
   border: none;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--easing-default);
   align-self: flex-end;
   padding: 0;
 }
 
 .sendButton:hover:not(:disabled) {
-  background: #2B2B2B;
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
 }
 
 .sendButton:disabled {
-  background: #D1D1D1;
+  opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
-[data-theme='dark'] .sendButton {
-  background: #ffffff;
-  color: #0D0D0D;
+.spinner {
+  animation: spin 1s linear infinite;
 }
 
-[data-theme='dark'] .sendButton:hover:not(:disabled) {
-  background: #E8E8E8;
-}
-
-[data-theme='dark'] .sendButton:disabled {
-  background: #565656;
-  color: #8F8F8F;
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
