@@ -167,7 +167,7 @@ export class ChatWebSocketService {
       console.log(`[ChatWS] Loaded ${mcpTools.length} MCP tools for project ${projectId}`);
 
       // Get Memory instance for conversation persistence
-      const memory = MemoryService.getMemory();
+      const memory = await MemoryService.getMemory();
       console.log(`[ChatWS] Memory service ready`);
 
       // Create agent with MCP tools and Memory

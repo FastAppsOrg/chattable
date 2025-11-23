@@ -10,37 +10,48 @@ import path from 'path';
  */
 export class MemoryService {
   private static memoryInstance: Memory | null = null;
+  private static initializationPromise: Promise<Memory> | null = null;
 
   /**
-   * Get the singleton Memory instance
+   * Get the singleton Memory instance with proper async initialization
    *
    * Configuration:
    * - Storage: LibSQL (SQLite) at ./memory.db
    * - Last Messages: 20 (conversation history limit)
    * - Generate Title: true (auto-generate thread titles from first message)
    */
-  static getMemory(): Memory {
-    if (!this.memoryInstance) {
-      console.log('[MemoryService] Initializing Mastra Memory...');
+  static async getMemory(): Promise<Memory> {
+    // If already initialized, return immediately
+    if (this.memoryInstance) {
+      return this.memoryInstance;
+    }
 
+    // If initialization is in progress, wait for it
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    // Start new initialization
+    this.initializationPromise = (async () => {
       const dbPath = path.resolve(process.cwd(), 'memory.db');
-      console.log('[MemoryService] Memory DB path:', dbPath);
+
+      const storage = new LibSQLStore({
+        id: 'chattable-memory',
+        url: `file:${dbPath}`,
+      });
 
       this.memoryInstance = new Memory({
-        storage: new LibSQLStore({
-          id: 'chattable-memory',
-          url: `file:${dbPath}`,
-        }),
+        storage,
         options: {
           lastMessages: 20,
           generateTitle: true,
         },
       });
 
-      console.log('[MemoryService] Memory initialized successfully');
-    }
+      return this.memoryInstance;
+    })();
 
-    return this.memoryInstance;
+    return this.initializationPromise;
   }
 
   /**
@@ -55,7 +66,7 @@ export class MemoryService {
     resourceId: string
   ): Promise<string | null> {
     try {
-      const memory = this.getMemory();
+      const memory = await this.getMemory();
       const storage = (memory as any).storage;
 
       if (!storage || typeof storage.getThread !== 'function') {
@@ -79,7 +90,7 @@ export class MemoryService {
    */
   static async getThreadsForResource(resourceId: string): Promise<any[]> {
     try {
-      const memory = this.getMemory();
+      const memory = await this.getMemory();
       const storage = (memory as any).storage;
 
       if (!storage || typeof storage.getThreadsByResourceId !== 'function') {
@@ -107,59 +118,52 @@ export class MemoryService {
     resourceId: string
   ): Promise<any[]> {
     try {
-      console.log('[MemoryService] getThreadMessages called:', { threadId, resourceId });
-      const memory = this.getMemory();
-      const storage = (memory as any).storage;
+      const memory = await this.getMemory();
 
-      if (!storage || !storage.db) {
-        console.error('[MemoryService] Storage or db is null');
-        return [];
-      }
+      // Use Mastra Memory API recall() method
+      const result = await memory.recall({
+        threadId,
+        resourceId,
+        perPage: false, // Get all messages
+      });
 
-      // Query mastra_messages table directly
-      const query = `SELECT * FROM mastra_messages WHERE thread_id = ? ORDER BY createdAt ASC`;
-      const result = await storage.db.execute(query, [threadId]);
-
-      console.log('[MemoryService] Raw query result:', result?.rows?.length || 0, 'messages');
-
-      if (!result || !result.rows) {
+      if (!result || !result.messages) {
         return [];
       }
 
       // Parse Mastra message format and convert to frontend format
-      const messages = result.rows.map((row: any) => {
+      const messages = result.messages.map((msg: any) => {
         let textContent = '';
 
-        // Parse the JSON content
-        try {
-          const contentObj = typeof row.content === 'string'
-            ? JSON.parse(row.content)
-            : row.content;
-
-          // Extract text from Mastra format: {"format":2,"parts":[{"type":"text","text":"..."}]}
-          if (contentObj && contentObj.parts && Array.isArray(contentObj.parts)) {
-            for (const part of contentObj.parts) {
-              if (part.type === 'text' && part.text) {
-                textContent += part.text;
-              }
+        // Extract text content from message
+        if (typeof msg.content === 'string') {
+          textContent = msg.content;
+        } else if (msg.content && Array.isArray(msg.content)) {
+          // Handle array of content parts
+          for (const part of msg.content) {
+            if (typeof part === 'string') {
+              textContent += part;
+            } else if (part.type === 'text' && part.text) {
+              textContent += part.text;
             }
-          } else if (typeof contentObj === 'string') {
-            textContent = contentObj;
           }
-        } catch (e) {
-          console.warn('[MemoryService] Failed to parse content:', row.content);
-          textContent = row.content;
+        } else if (msg.content && msg.content.parts) {
+          // Handle {"format":2,"parts":[...]} format
+          for (const part of msg.content.parts) {
+            if (part.type === 'text' && part.text) {
+              textContent += part.text;
+            }
+          }
         }
 
         return {
-          id: row.id,
-          role: row.role,
+          id: msg.id || `msg-${Date.now()}-${Math.random()}`,
+          role: msg.role,
           content: textContent,
-          timestamp: row.createdAt,
+          timestamp: msg.createdAt || msg.timestamp || new Date().toISOString(),
         };
       });
 
-      console.log('[MemoryService] Returning', messages.length, 'parsed messages');
       return messages;
     } catch (error) {
       console.error('[MemoryService] Error getting messages:', error);

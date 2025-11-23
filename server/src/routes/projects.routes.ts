@@ -1190,7 +1190,7 @@ export function createProjectsRoutes(
       const { MemoryService } = await import('../services/memory.service.js');
       const { createCodeEditorAgent, streamCodeEditing } = await import('../mastra/agents/code-editor.js');
 
-      const memory = MemoryService.getMemory();
+      const memory = await MemoryService.getMemory();
       const agent = createCodeEditorAgent(mcpTools, memory);
 
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');

@@ -67,14 +67,12 @@ export async function* streamCodeEditing(
     // 2. Save user message to memory
     // 3. Save assistant response to memory
     // 4. Generate thread title if this is the first message
-    console.log('[Code Editor] Calling agent.stream() with memory context...')
     const stream = await agent.stream(userMessage, {
       memory: {
         thread: threadId,
         resource: resourceId,
       },
     })
-    console.log('[Code Editor] Stream created successfully')
 
     // Iterate through the text stream
     console.log('[Code Editor] Starting to iterate textStream...')
