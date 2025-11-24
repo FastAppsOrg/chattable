@@ -90,6 +90,7 @@ export async function* streamCodeEditing(
   } catch (error: any) {
     console.error('[Code Editor] Error during streaming:', error.message)
     console.error('[Code Editor] Error stack:', error.stack)
+    // Re-throw to be caught by the route handler
     throw error
   }
 }

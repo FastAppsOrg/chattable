@@ -58,25 +58,50 @@ export class ProjectService {
         templateUrl: form.git_url || 'https://github.com/alpic-ai/apps-sdk-template', // Default to Apps SDK template
       }
 
-      // Project creation can take 10-30 seconds (git clone + dev server startup)
-      const response = await apiClient.post(API_ENDPOINTS.projects, body, { timeout: 60000 })
+      console.log('[ProjectService] Creating project with body:', body)
+
+      // Project creation now returns immediately with status='initializing'
+      // Background deployment happens via SSE progress updates
+      const response = await apiClient.post(API_ENDPOINTS.projects, body, { timeout: 10000 })
+
+      console.log('[ProjectService] Response status:', response.status, response.statusText)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+
+        // Extract error message - support multiple formats from server
+        const errorMessage = errorData.error || errorData.message || errorData.detail || 'Unknown error'
+
         if (response.status === 400) {
-          throw new Error(errorData.detail || 'Invalid project configuration')
+          throw new Error(errorMessage || 'Invalid project configuration')
         }
         if (response.status === 403) {
-          throw new Error('Project limit reached or permission denied')
+          throw new Error(errorMessage || 'Project limit reached or permission denied')
         }
-        throw new Error(errorData.detail || `Failed to create project: ${response.status}`)
+        if (response.status === 500) {
+          throw new Error(errorMessage || 'Server error while creating project')
+        }
+        throw new Error(errorMessage || `Failed to create project: ${response.status}`)
       }
 
-      return response.json()
+      const text = await response.text()
+      console.log('[ProjectService] Response text:', text)
+
+      const project = JSON.parse(text)
+      console.log('[ProjectService] Parsed project:', project)
+
+      return project
     } catch (error) {
+      console.error('[ProjectService] Error creating project:', error)
+      console.error('[ProjectService] Error type:', error?.constructor?.name)
+      console.error('[ProjectService] Error message:', (error as any)?.message)
+      console.error('[ProjectService] Error name:', (error as any)?.name)
+
       if (error instanceof Error) {
+        console.error('[ProjectService] Rethrowing Error:', error.message, error.name)
         throw error
       }
+      console.error('[ProjectService] Non-Error thrown, wrapping')
       throw new Error('Network error: Unable to create project')
     }
   }

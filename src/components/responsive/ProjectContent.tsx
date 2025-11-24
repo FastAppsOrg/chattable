@@ -9,6 +9,7 @@ import { ProjectNavbarRight } from '../workspace/ProjectNavbarRight'
 import { GitPanel } from '../workspace/GitPanel'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { ResponsiveProjectContent } from '../responsive/ResponsiveProjectContent'
+import { DeploymentProgress } from '../project/DeploymentProgress'
 import { useNavigate } from 'react-router-dom'
 import { useGitCommits } from '../../hooks/useGitCommits'
 import type { Project } from '../../types/project'
@@ -57,52 +58,84 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
     }
   }, [hasCommits, previewCollapsed])
 
+  // Extract primitive values to avoid re-running effect when project object reference changes
+  const projectId = project?.project_id
+  const projectStatus = project?.status
+
+  // Track if we've already started polling for this project
+  const pollingRef = useRef<string | null>(null)
+
+  // Store onProjectUpdate in a ref to avoid effect re-runs when it changes
+  const onProjectUpdateRef = useRef(onProjectUpdate)
+
+  useEffect(() => {
+    onProjectUpdateRef.current = onProjectUpdate
+  }, [onProjectUpdate])
+
   // Poll for project readiness if status is initializing
   useEffect(() => {
-    if (!project || project.status !== 'initializing') {
+    // Early exit if no project or not initializing
+    if (!projectId || projectStatus !== 'initializing') {
       setIsInitializing(false)
       return
     }
 
+    // Create a unique key for this polling session
+    const pollingKey = `${projectId}-initializing`
+
+    // If we're already polling this exact project, don't start again
+    if (pollingRef.current === pollingKey) {
+      console.log('[DEBUG_BOMB] [ProjectContent] Already polling, skipping duplicate', pollingKey)
+      return
+    }
+
+    pollingRef.current = pollingKey
     setIsInitializing(true)
-    console.log('Project is initializing, polling for readiness...')
+    console.log('[DEBUG_BOMB] [ProjectContent] Starting polling for:', projectId)
 
     let cancelled = false
+    const startedPolling = Date.now()
 
     // Start polling in background
-    ProjectService.waitForProjectReady(project.project_id, {
+    ProjectService.waitForProjectReady(projectId, {
       maxAttempts: 30,
-      pollInterval: 10000, // 10 seconds - reduced polling frequency
+      pollInterval: 10000, // 10 seconds
       onProgress: (status, attempt) => {
         if (cancelled) return
-        console.log(`Sandbox status: ${status} (attempt ${attempt}/30)`)
+        console.log(`[ProjectContent] Polling status: ${status} (${attempt}/30)`)
       },
     })
       .then((readyProject) => {
         if (cancelled) return
-        console.log('Sandbox ready!')
+        const elapsed = ((Date.now() - startedPolling) / 1000).toFixed(1)
+        console.log(`[ProjectContent] Project ready after ${elapsed}s!`)
         setIsInitializing(false)
-        // Trigger project update to refresh with ephemeral_url
-        if (onProjectUpdate) {
-          onProjectUpdate()
+        pollingRef.current = null
+        // Trigger ONE project update to refresh with ephemeral_url
+        if (onProjectUpdateRef.current) {
+          onProjectUpdateRef.current()
         }
       })
       .catch((error) => {
         if (cancelled) return
-        console.error('Failed to wait for project readiness:', error)
+        console.error('[ProjectContent] Polling failed:', error)
         setIsInitializing(false)
-        // Trigger project update even on error to refresh status
-        if (onProjectUpdate) {
-          onProjectUpdate()
+        pollingRef.current = null
+        // Still update to refresh status
+        if (onProjectUpdateRef.current) {
+          onProjectUpdateRef.current()
         }
       })
 
-    // Cleanup: mark as cancelled when component unmounts or project changes
+    // Cleanup: mark as cancelled when component unmounts or dependencies change
     return () => {
-      cancelled = true
-      setIsInitializing(false)
+      if (!cancelled) {
+        cancelled = true
+        console.log('[ProjectContent] Polling cleanup for:', projectId)
+        pollingRef.current = null
+      }
     }
-  }, [project?.project_id, project?.status])
+  }, [projectId, projectStatus]) // Removed onProjectUpdate from dependencies
 
   const handlePreviewConnect = () => {
     setPreviewCollapsed(false)
@@ -224,6 +257,39 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                 className={`preview-panel ${previewCollapsed ? 'collapsed' : ''}`}
               >
                 <div style={{ position: 'relative', height: '100%' }}>
+                  {/* Progress overlay - shows during initialization */}
+                  {isInitializing && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: 'rgba(26, 26, 26, 0.95)',
+                      backdropFilter: 'blur(8px)',
+                      zIndex: 1001,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      animation: 'fadeIn 0.3s ease-in',
+                    }}>
+                      <DeploymentProgress
+                        projectId={project.project_id}
+                        onComplete={() => {
+                          console.log('Deployment complete!')
+                          setIsInitializing(false)
+                          if (onProjectUpdate) {
+                            onProjectUpdate()
+                          }
+                        }}
+                        onError={(error) => {
+                          console.error('Deployment error:', error)
+                          setIsInitializing(false)
+                        }}
+                      />
+                    </div>
+                  )}
+
                   {/* Git Panel Overlay */}
                   <GitPanel
                     project={project}
@@ -403,6 +469,39 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                     className={`preview-panel ${previewCollapsed ? 'collapsed' : ''}`}
                   >
                     <div style={{ position: 'relative', height: '100%' }}>
+                      {/* Progress overlay - shows during initialization */}
+                      {isInitializing && (
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundColor: 'rgba(26, 26, 26, 0.95)',
+                          backdropFilter: 'blur(8px)',
+                          zIndex: 1001,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          animation: 'fadeIn 0.3s ease-in',
+                        }}>
+                          <DeploymentProgress
+                            projectId={project.project_id}
+                            onComplete={() => {
+                              console.log('Deployment complete!')
+                              setIsInitializing(false)
+                              if (onProjectUpdate) {
+                                onProjectUpdate()
+                              }
+                            }}
+                            onError={(error) => {
+                              console.error('Deployment error:', error)
+                              setIsInitializing(false)
+                            }}
+                          />
+                        </div>
+                      )}
+
                       {/* Git Panel Overlay */}
                       <GitPanel
                         project={project}

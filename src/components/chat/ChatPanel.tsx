@@ -84,8 +84,23 @@ export function ChatPanel({
 
   // Check for initial prompt and send it automatically
   useEffect(() => {
+    console.log('[ChatPanel] Initial prompt useEffect triggered:', {
+      historyLoaded,
+      currentProjectId,
+      sandboxReady,
+      initialPromptProcessed: initialPromptProcessedRef.current,
+      messageCount: messages.length
+    })
+
     // Only run once per project when history is loaded
     if (!historyLoaded || !currentProjectId || initialPromptProcessedRef.current) {
+      console.log('[ChatPanel] Early return - conditions not met')
+      return
+    }
+
+    // CRITICAL: Wait for sandbox to be ready before sending
+    if (!sandboxReady) {
+      console.log('[ChatPanel] ⏳ Waiting for sandbox to be ready before sending initial prompt')
       return
     }
 
@@ -94,34 +109,42 @@ export function ChatPanel({
     if (hasUserMessages) {
       // Mark that first message was already sent (from history)
       firstMessageSentRef.current = true
+      console.log('[ChatPanel] User messages already exist, skipping initial prompt')
     }
 
     const storageKey = `initial_prompt_${currentProjectId}`
     const initialPrompt = sessionStorage.getItem(storageKey)
+
+    console.log('[ChatPanel] Checking initial prompt:', {
+      hasPrompt: !!initialPrompt,
+      promptLength: initialPrompt?.length,
+      hasUserMessages
+    })
 
     if (initialPrompt && initialPrompt.trim()) {
       if (hasUserMessages) {
         return
       }
 
-      // Mark as processed to prevent re-runs
+      // Mark as processed to prevent re-runs (StrictMode protection)
       initialPromptProcessedRef.current = true
 
-      // Remove from storage
-      sessionStorage.removeItem(storageKey)
+      // DON'T remove from storage yet - will be removed after successful send
+      // This prevents StrictMode double-mount from losing the prompt
 
+      console.log('[ChatPanel] ✅ Sandbox ready, sending initial prompt:', initialPrompt.substring(0, 50))
       // Process initial prompt immediately
-      sendInitialPrompt(initialPrompt)
+      sendInitialPrompt(initialPrompt, storageKey)
     }
 
     // Cleanup: Reset sending ref on unmount to handle React StrictMode
     return () => {
       isSendingRef.current = false
     }
-  }, [historyLoaded, currentProjectId, messages])
+  }, [historyLoaded, currentProjectId, messages, sandboxReady])
 
   // Send initial prompt - bypasses input state and button logic
-  const sendInitialPrompt = async (prompt: string) => {
+  const sendInitialPrompt = async (prompt: string, storageKey?: string) => {
     // Prevent double-send
     if (isSendingRef.current) {
       console.log('[ChatPanel] sendInitialPrompt blocked - already sending')
@@ -154,12 +177,43 @@ export function ChatPanel({
     setThinkingMessageId(assistantId)
     setLoading(true)
 
-    // 3. Send to API via HTTP streaming
+    // 3. Send to API via HTTP streaming with retry logic
+    const MAX_RETRIES = 5
+    const RETRY_DELAY = 2000
+
+    const sendWithRetry = async (attempt = 1): Promise<Response> => {
+      try {
+        const response = await apiClient.post(
+          API_ENDPOINTS.projectChat(currentProjectId!),
+          { message: prompt, images: [] }
+        )
+
+        if (response.status === 503 && attempt <= MAX_RETRIES) {
+          console.log(`[ChatPanel] Server busy (503), retrying in ${RETRY_DELAY}ms... (Attempt ${attempt}/${MAX_RETRIES})`)
+          // Update thinking message to show status
+          const statusMessage = `Initializing agent... (${attempt}/${MAX_RETRIES})`
+          addMessage({
+            ...thinkingMessage,
+            content: statusMessage,
+          })
+
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
+          return sendWithRetry(attempt + 1)
+        }
+
+        return response
+      } catch (error) {
+        if (attempt <= MAX_RETRIES) {
+          console.log(`[ChatPanel] Network error, retrying... (Attempt ${attempt}/${MAX_RETRIES})`)
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
+          return sendWithRetry(attempt + 1)
+        }
+        throw error
+      }
+    }
+
     try {
-      const response = await apiClient.post(
-        API_ENDPOINTS.projectChat(currentProjectId!),
-        { message: prompt, images: [] }
-      )
+      const response = await sendWithRetry()
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -168,6 +222,9 @@ export function ChatPanel({
       if (!response.body) {
         throw new Error('Response body is empty')
       }
+
+      // Reset thinking message content before streaming
+      addMessage({ ...thinkingMessage, content: '' })
 
       // 4. Read streaming response
       const reader = response.body.getReader()
@@ -209,6 +266,12 @@ export function ChatPanel({
       isSendingRef.current = false
       console.log('[ChatPanel] sendInitialPrompt completed successfully')
 
+      // Remove from storage only after successful send
+      if (storageKey) {
+        sessionStorage.removeItem(storageKey)
+        console.log('[ChatPanel] Removed initial prompt from storage after successful send')
+      }
+
       // Sync project title after first message
       if (!firstMessageSentRef.current && currentProjectId) {
         firstMessageSentRef.current = true
@@ -227,6 +290,10 @@ export function ChatPanel({
       setThinkingMessageId(null)
       setLoading(false)
       isSendingRef.current = false
+
+      // On error, keep the prompt in storage so user can retry
+      // Don't remove storageKey here
+
       showToast('Failed to send message', 'error')
     }
   }
@@ -645,8 +712,8 @@ export function ChatPanel({
           {/* Selected Elements Carousel */}
           <SelectedElementsCarousel
             elements={selectedElements}
-            onRemove={onRemoveElement || (() => {})}
-            onClear={onClearElements || (() => {})}
+            onRemove={onRemoveElement || (() => { })}
+            onClear={onClearElements || (() => { })}
           />
 
           {/* Image Preview */}
@@ -765,23 +832,23 @@ export function ChatPanel({
               onChange={handleImageSelect}
               style={{ display: 'none' }}
             />
-            
+
             {/* Left side: Empty for now */}
             <div className="input-footer-left"></div>
 
             {/* Right side: Image and Send buttons */}
             <div className="input-footer-right">
               <button
-                  type="button"
-                  className="action-button image-button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={loading}
-                  title="Attach images"
-                >
-                  <ImagePlus size={16} />
-                  {selectedImages.length > 0 && (
-                    <span className="badge">{selectedImages.length}</span>
-                  )}
+                type="button"
+                className="action-button image-button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading}
+                title="Attach images"
+              >
+                <ImagePlus size={16} />
+                {selectedImages.length > 0 && (
+                  <span className="badge">{selectedImages.length}</span>
+                )}
               </button>
 
               <button

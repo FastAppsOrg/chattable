@@ -7,6 +7,7 @@ import { apiClient } from '../../utils/api'
 import styles from './HomePanel.module.css'
 import { useAuth } from '@/hooks/useAuth'
 import { API_ENDPOINTS } from '../../constants/api'
+import { generateProjectName } from '../../utils/nameGenerator'
 
 interface HomePanelProps {
   onCreate: (form: CreateProjectForm, initialPrompt?: string) => Promise<void>
@@ -84,8 +85,11 @@ export function HomePanel({
       // Set creation flag BEFORE any async operations
       isCreatingRef.current = true
 
+      // Generate a random project name
+      const randomName = generateProjectName()
+
       const form: CreateProjectForm = {
-        name: '',
+        name: randomName,
         git_url: '',
         git_branch: 'main',
       }

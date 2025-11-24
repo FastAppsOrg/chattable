@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { IDeploymentService } from '../interfaces/deployment.interface.js';
 import { DatabaseService } from '../db/db.service.js';
 import { MCPService } from '../services/mcp.service.js';
+import { MemoryService } from '../services/memory.service.js';
 
 export function createProjectsRoutes(
   deploymentService: IDeploymentService,
@@ -23,37 +24,68 @@ export function createProjectsRoutes(
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const deployment = await deploymentService.createProject({
-        userId: user.id,
-        name: name || 'Untitled Project',
-        templateUrl: templateUrl || gitUrl,
-        gitUrl,
-        gitBranch: gitBranch || 'main',
-      });
+      const projectName = name || 'Untitled Project';
+      const deploymentId = projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 
+      // Create DB project record immediately with status='initializing'
       const dbProject = await dbService.createProject({
         userId: user.id,
-        deploymentId: deployment.projectId,
-        name: name || 'Untitled Project',
+        deploymentId,
+        name: projectName,
         gitUrl: gitUrl || templateUrl,
         gitBranch: gitBranch || 'main',
-        ephemeralUrl: deployment.ephemeralUrl,
-        mcpEphemeralUrl: deployment.mcp.url,
-        status: deployment.status,
+        ephemeralUrl: null,
+        mcpEphemeralUrl: null,
+        status: 'initializing',
       });
 
+      // Return immediately to frontend
       res.json({
         project_id: dbProject.id,
         name: dbProject.name,
         git_url: dbProject.gitUrl,
         default_branch: dbProject.gitBranch,
-        status: dbProject.status,
+        status: 'initializing',
         created_at: dbProject.createdAt,
         deployment_id: dbProject.deploymentId,
-        ephemeral_url: dbProject.ephemeralUrl,
-        mcp_ephemeral_url: dbProject.mcpEphemeralUrl,
-        mcp: deployment.mcp,
-        local_path: deployment.localPath,
+        ephemeral_url: null,
+        mcp_ephemeral_url: null,
+      });
+
+      // Create Mastra Memory thread immediately
+      try {
+        const memory = await MemoryService.getMemory();
+        await memory.createThread({
+          threadId: dbProject.id,
+          resourceId: user.id,
+        });
+        console.log(`[Projects] Created Mastra thread for project ${dbProject.id}`);
+      } catch (error: any) {
+        console.error(`[Projects] Failed to create Mastra thread:`, error);
+      }
+
+      // Start async deployment in background (don't await)
+      deploymentService.createProject({
+        userId: user.id,
+        name: projectName,
+        templateUrl: templateUrl || gitUrl,
+        gitUrl,
+        gitBranch: gitBranch || 'main',
+        dbProjectId: dbProject.id, // Pass database UUID for progress tracking
+      }).then(async (deployment) => {
+        // Update DB with deployment info - pass userId as second parameter!
+        await dbService.updateProject(dbProject.id, user.id, {
+          ephemeralUrl: deployment.ephemeralUrl,
+          mcpEphemeralUrl: deployment.mcp.url,
+          status: deployment.status,
+        });
+        console.log(`[Projects] Background deployment completed for ${dbProject.id}`);
+      }).catch((error) => {
+        console.error(`[Projects] Background deployment failed for ${dbProject.id}:`, error);
+        // Update status to error - pass userId as second parameter!
+        dbService.updateProject(dbProject.id, user.id, {
+          status: 'error',
+        }).catch(console.error);
       });
 
     } catch (error: any) {
@@ -232,6 +264,51 @@ export function createProjectsRoutes(
         message: error.message,
       });
     }
+  });
+
+  /**
+   * GET /api/projects/:id/progress
+   * Stream project creation progress via Server-Sent Events (SSE)
+   */
+  router.get('/:id/progress', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const user = (req as any).user;
+
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+
+    // Send initial comment to establish connection
+    res.write(': connected\n\n');
+
+    // Listen for progress events for this project
+    const progressListener = (event: any) => {
+      if (event.projectId === id) {
+        const data = JSON.stringify(event);
+        res.write(`data: ${data}\n\n`);
+
+        // Close connection on complete or error
+        if (event.step === 'complete' || event.step === 'error') {
+          setTimeout(() => {
+            res.end();
+          }, 500);
+        }
+      }
+    };
+
+    deploymentService.progressEmitter.on('progress', progressListener);
+
+    // Cleanup on client disconnect
+    req.on('close', () => {
+      deploymentService.progressEmitter.off('progress', progressListener);
+      res.end();
+    });
   });
 
   /**
@@ -1059,16 +1136,19 @@ export function createProjectsRoutes(
     `;
 
       let modifiedHtml;
+      // Use mcpOrigin (dev server URL) as base if available, otherwise default to /
+      const baseHref = mcpOrigin ? `${mcpOrigin}/` : '/';
+
       if (htmlContent.includes('<html>') && htmlContent.includes('<head>')) {
         modifiedHtml = htmlContent.replace(
           '<head>',
-          `<head><base href="/">${apiScript}`
+          `<head><base href="${baseHref}">${apiScript}`
         );
       } else {
         modifiedHtml = `<!DOCTYPE html>
 <html>
 <head>
-  <base href="/">
+  <base href="${baseHref}">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${apiScript}
@@ -1080,6 +1160,9 @@ export function createProjectsRoutes(
       }
 
       const allowedFrameOrigins = process.env.ALLOWED_FRAME_ORIGINS || 'http://localhost:5173 http://localhost:5174';
+
+      // Default CSP directives
+      // CRITICAL: Add mcpOrigin to connect-src to allow fetching data from dev server
       const cspDirectives = [
         "default-src 'self'",
         `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com${mcpOrigin ? ' ' + mcpOrigin : ''}`,
@@ -1089,9 +1172,48 @@ export function createProjectsRoutes(
         `img-src 'self' data: https: blob:${mcpOrigin ? ' ' + mcpOrigin : ''}`,
         `media-src 'self' data: https: blob:${mcpOrigin ? ' ' + mcpOrigin : ''}`,
         `font-src 'self' data: https://cdn.jsdelivr.net https://unpkg.com${mcpOrigin ? ' ' + mcpOrigin : ''}`,
-        "connect-src 'self' https: wss: ws:",
+        `connect-src 'self' https: wss: ws:${mcpOrigin ? ' ' + mcpOrigin : ''}`,
         `frame-ancestors 'self' ${allowedFrameOrigins}`,
       ];
+
+      // Inject custom CSP from tool metadata if available
+      if (toolResponseMetadata && toolResponseMetadata['openai/widgetCSP']) {
+        try {
+          const widgetCSP = toolResponseMetadata['openai/widgetCSP'];
+          console.log('[Widget] Injecting custom CSP:', widgetCSP);
+
+          const { connect_domains, resource_domains } = widgetCSP;
+
+          // Helper to append domains to a directive
+          const appendDomains = (directivePrefix: string, domains: string[]) => {
+            if (!domains || !Array.isArray(domains)) return;
+
+            const index = cspDirectives.findIndex(d => d.startsWith(directivePrefix));
+            if (index !== -1) {
+              cspDirectives[index] += ' ' + domains.join(' ');
+            } else {
+              cspDirectives.push(`${directivePrefix} ${domains.join(' ')}`);
+            }
+          };
+
+          // Map connect_domains to connect-src
+          if (connect_domains) {
+            appendDomains('connect-src', connect_domains);
+          }
+
+          // Map resource_domains to multiple directives
+          if (resource_domains) {
+            appendDomains('img-src', resource_domains);
+            appendDomains('media-src', resource_domains);
+            appendDomains('font-src', resource_domains);
+            appendDomains('style-src', resource_domains);
+            appendDomains('script-src', resource_domains);
+          }
+
+        } catch (err) {
+          console.error('[Widget] Failed to inject custom CSP:', err);
+        }
+      }
 
       res.setHeader('Content-Security-Policy', cspDirectives.join('; '));
       res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -1193,7 +1315,21 @@ export function createProjectsRoutes(
       // Note: Messages are now automatically saved by Mastra Memory
       // No need to manually save to chatMessages table
 
-      const mcpTools = await mcpService.getTools(project.mcpEphemeralUrl);
+      let mcpTools;
+      try {
+        mcpTools = await mcpService.getTools(project.mcpEphemeralUrl);
+      } catch (error: any) {
+        console.error('[Chat] Failed to get MCP tools:', error);
+        // If MCP server is not ready (e.g. fetch failed), return 503 so client can retry
+        if (error.message.includes('fetch failed') || error.code === 'ECONNREFUSED') {
+          return res.status(503).json({
+            error: 'Project tools are initializing',
+            retryAfter: 2
+          });
+        }
+        throw error;
+      }
+
       const { MemoryService } = await import('../services/memory.service.js');
       const { createCodeEditorAgent, streamCodeEditing } = await import('../mastra/agents/code-editor.js');
 
@@ -1227,9 +1363,53 @@ export function createProjectsRoutes(
 
     } catch (error: any) {
       console.error('[Chat] Error:', error);
+      console.error('[Chat] Error stack:', error.stack);
       if (!res.headersSent) {
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({
+          error: error.message || 'Internal server error',
+          details: error.stack
+        });
       }
+    }
+  });
+
+  /**
+   * GET /api/projects/:id/title
+   * Get thread title from Mastra Memory
+   */
+  router.get('/:id/title', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const user = (req as any).user;
+
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Get project from DB
+      const project = await dbService.getProject(id);
+      if (!project || project.userId !== user.id) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      // Get thread from Mastra Memory
+      const memory = await MemoryService.getMemory();
+      const thread = await memory.getThreadById({ threadId: id });
+
+      if (!thread) {
+        return res.status(404).json({ error: 'Thread not found' });
+      }
+
+      // If title was generated, update project name in DB
+      if (thread.title && thread.title !== project.name) {
+        await dbService.updateProject(id, { name: thread.title });
+        console.log(`[Projects] Updated project name to: ${thread.title}`);
+      }
+
+      res.json({ title: thread.title || project.name });
+    } catch (error: any) {
+      console.error('[Projects] Error fetching thread title:', error);
+      res.status(500).json({ error: error.message || 'Internal server error' });
     }
   });
 

@@ -23,14 +23,34 @@
 }
 
 @media (max-width: 1024px) {
+  .panel {
+    padding: var(--spacing-xl);
+    gap: var(--spacing-lg);
+  }
+
   .panelContent {
-    width: 80%;
+    width: 85%;
   }
 }
 
 @media (max-width: 768px) {
+  .panel {
+    padding: var(--spacing-lg);
+    gap: var(--spacing-md);
+  }
+
   .panelContent {
     width: 95%;
+  }
+}
+
+@media (max-width: 480px) {
+  .panel {
+    padding: var(--spacing-md);
+  }
+
+  .panelContent {
+    width: 100%;
   }
 }
 
@@ -48,6 +68,12 @@
   color: var(--color-text-primary);
   margin: 0;
   text-align: center;
+}
+
+@media (max-width: 768px) {
+  .panelTitle {
+    font-size: var(--font-size-md);
+  }
 }
 
 .panelBody {

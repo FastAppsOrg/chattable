@@ -44,6 +44,11 @@ export default defineConfig(({ mode }) => ({
       // 'Cross-Origin-Embedder-Policy': 'require-corp',
       'Cross-Origin-Opener-Policy': 'same-origin',
     },
+    watch: {
+      // Ignore the .chattable directory where cloned projects are stored
+      // This prevents Vite from detecting tsconfig changes and doing full reloads
+      ignored: ['**/server/.chattable/**', '**/node_modules/**'],
+    },
   },
   build: {
     minify: 'terser',

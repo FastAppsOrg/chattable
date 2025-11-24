@@ -1,10 +1,11 @@
 import { spawn, ChildProcess } from 'child_process';
 import { promisify } from 'util';
 import { exec as execCallback } from 'child_process';
-import { mkdir, rm } from 'fs/promises';
+import { mkdir, rm, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { createServer } from 'net';
+import { EventEmitter } from 'events';
 import {
   IDeploymentService,
   DeploymentProject,
@@ -25,19 +26,32 @@ const execAsync = promisify(execCallback);
  * - Direct filesystem access
  * - Works offline
  */
+export interface ProgressEvent {
+  projectId: string;
+  step: 'start' | 'clone' | 'install' | 'dev-server' | 'complete' | 'error';
+  message: string;
+  progress?: number; // 0-100
+}
+
 export class LocalDeploymentAdapter implements IDeploymentService {
   private projectsDir: string;
   private runningProcesses = new Map<string, ProcessInfo>();
+  public progressEmitter = new EventEmitter();
 
   constructor() {
     this.projectsDir = path.join(process.cwd(), '.chattable');
+  }
+
+  private emitProgress(event: ProgressEvent) {
+    console.log(`[Progress] ${event.projectId}: ${event.step} - ${event.message}`);
+    this.progressEmitter.emit('progress', event);
   }
 
   /**
    * Create a new local project
    */
   async createProject(options: CreateProjectOptions): Promise<DeploymentProject> {
-    const { userId, name } = options;
+    const { userId, name, dbProjectId } = options;
     // Use name as ID if possible, otherwise fallback to timestamp
     const safeName = name ? name.toLowerCase().replace(/[^a-z0-9-]/g, '-') : `project-${Date.now()}`;
     const projectId = safeName;
@@ -45,13 +59,32 @@ export class LocalDeploymentAdapter implements IDeploymentService {
 
     console.log(`[Local] Creating project: ${projectId}`);
     console.log(`[Local] Project directory: ${projectDir}`);
+    console.log(`[Local] Database project ID: ${dbProjectId}`);
+
+    // Use dbProjectId for progress tracking if provided, otherwise fallback to deployment projectId
+    const progressId = dbProjectId || projectId;
 
     try {
+      // Emit start event
+      this.emitProgress({
+        projectId: progressId,
+        step: 'start',
+        message: 'Initializing project...',
+        progress: 0,
+      });
       await mkdir(projectDir, { recursive: true });
 
       // Fixed template URL as requested
       const gitUrl = 'https://github.com/Jhvictor4/apps-sdk-template';
       console.log(`[Local] Cloning ${gitUrl}...`);
+
+      // Emit clone start event
+      this.emitProgress({
+        projectId: progressId,
+        step: 'clone',
+        message: 'Cloning repository...',
+        progress: 20,
+      });
 
       // Check if directory is empty
       const files = await execAsync('ls -A', { cwd: projectDir }).catch(() => ({ stdout: '' }));
@@ -59,9 +92,63 @@ export class LocalDeploymentAdapter implements IDeploymentService {
         console.log(`[Local] Directory not empty, skipping clone...`);
       } else {
         await execAsync(`git clone ${gitUrl} .`, { cwd: projectDir });
+
+        // Patch template to use PORT environment variable and add CSP
+        console.log(`[Local] Patching template for PORT and CSP...`);
+        try {
+          const serverIndexPath = path.join(projectDir, 'server/src/index.ts');
+          let serverCode = await readFile(serverIndexPath, 'utf-8');
+
+          // Define the port variable at the top
+          const portVarDeclaration = 'const PORT = Number(process.env.PORT) || 3000;\n\n';
+
+          // Add PORT variable before app.listen (look for "app.listen" and insert before it)
+          serverCode = serverCode.replace(
+            /(app\.listen\()/,
+            portVarDeclaration + '$1'
+          );
+
+          // Replace app.listen(3000, with app.listen(PORT,
+          serverCode = serverCode.replace(
+            /app\.listen\(3000,/g,
+            'app.listen(PORT,'
+          );
+
+          // Replace hardcoded port 3000 in console.log messages
+          serverCode = serverCode.replace(
+            /port 3000/g,
+            `port \${PORT}`
+          );
+          serverCode = serverCode.replace(
+            /localhost:3000/g,
+            `localhost:\${PORT}`
+          );
+
+          // Add CSP headers - insert after express.json() middleware
+          const cspMiddleware = `\n// CSP headers for security\napp.use((req, res, next) => {\n  res.setHeader(\n    'Content-Security-Policy',\n    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'"\n  );\n  next();\n});\n\n`;
+
+          // Insert CSP middleware after app.use(express.json())
+          serverCode = serverCode.replace(
+            /(app\.use\(express\.json\(\)\))/,
+            '$1' + cspMiddleware
+          );
+
+          await writeFile(serverIndexPath, serverCode);
+          console.log(`[Local] Successfully patched template (PORT + CSP)`);
+        } catch (error: any) {
+          console.warn(`[Local] Could not patch template:`, error.message);
+        }
       }
 
       console.log(`[Local] Installing dependencies...`);
+
+      // Emit install start event
+      this.emitProgress({
+        projectId: progressId,
+        step: 'install',
+        message: 'Installing dependencies...',
+        progress: 50,
+      });
       const hasPnpmWorkspace = await execAsync('test -f pnpm-workspace.yaml && echo "yes" || echo "no"', { cwd: projectDir })
         .then(result => result.stdout.trim() === 'yes')
         .catch(() => false);
@@ -81,9 +168,17 @@ export class LocalDeploymentAdapter implements IDeploymentService {
         await execAsync('npm install', { cwd: projectDir });
       }
 
-      const devPort = await this.findAvailablePort(3000);
+      const devPort = await this.findAvailablePort(40000);
 
       console.log(`[Local] Dev server will run on port ${devPort}`);
+
+      // Emit dev server start event
+      this.emitProgress({
+        projectId: progressId,
+        step: 'dev-server',
+        message: 'Starting development server...',
+        progress: 80,
+      });
 
       let devCwd = projectDir;
       const hasServerDir = await execAsync('test -d server && echo "yes" || echo "no"', { cwd: projectDir })
@@ -125,6 +220,14 @@ export class LocalDeploymentAdapter implements IDeploymentService {
 
       console.log(`[Local] Project ${projectId} created successfully`);
 
+      // Emit complete event
+      this.emitProgress({
+        projectId: progressId,
+        step: 'complete',
+        message: 'Project ready!',
+        progress: 100,
+      });
+
       return {
         projectId,
         ephemeralUrl: `http://localhost:${devPort}`,
@@ -138,6 +241,14 @@ export class LocalDeploymentAdapter implements IDeploymentService {
       };
     } catch (error: any) {
       console.error(`[Local] Failed to create project:`, error);
+
+      // Emit error event
+      this.emitProgress({
+        projectId: progressId,
+        step: 'error',
+        message: `Error: ${error.message}`,
+        progress: 0,
+      });
 
       // Only cleanup if we created the directory and it failed immediately
       // For now, let's be safe and NOT delete potentially existing user data if it wasn't empty
@@ -189,7 +300,7 @@ export class LocalDeploymentAdapter implements IDeploymentService {
       .then(result => result.stdout.trim() === 'yes')
       .catch(() => false);
 
-    const devPort = await this.findAvailablePort(3000);
+    const devPort = await this.findAvailablePort(40000);
 
     console.log(`[Local] Dev server will run on port ${devPort}`);
 

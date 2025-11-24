@@ -104,3 +104,49 @@
     transform: rotate(360deg);
   }
 }
+
+/* Responsive Styles */
+@media (max-width: 1024px) {
+  .chatInputContainer {
+    padding: 10px 14px;
+  }
+
+  .chatTextarea {
+    font-size: 1rem;
+    min-height: 80px;
+  }
+
+  .sendButton {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 768px) {
+  .chatInputContainer {
+    padding: 12px 16px;
+    border-radius: 20px;
+  }
+
+  .chatTextarea {
+    font-size: 1.05rem;
+    padding: 8px 10px;
+    min-height: 70px;
+  }
+
+  .sendButton {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chatInputContainer {
+    border-radius: 18px;
+  }
+
+  .chatTextarea {
+    font-size: 1rem;
+    min-height: 60px;
+  }
+}

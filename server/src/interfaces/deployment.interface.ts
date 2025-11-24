@@ -50,6 +50,8 @@ export interface CreateProjectOptions {
   templateUrl?: string;
   gitUrl?: string;
   gitBranch?: string;
+  /** Database project UUID for progress tracking */
+  dbProjectId?: string;
 }
 
 export interface IDeploymentService {
