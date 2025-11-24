@@ -83,7 +83,7 @@ export class ProjectService {
 
   /**
    * Wait for project sandbox to be ready
-   * Polls project status until sandbox_id is available and status is "active"
+   * Polls project status until deployment_id is available and status is "active"
    */
   static async waitForProjectReady(
     projectId: string,
@@ -107,7 +107,7 @@ export class ProjectService {
         }
 
         // Check if project is ready
-        if (project.status === 'active' && project.sandbox_id) {
+        if (project.status === 'active' && project.deployment_id) {
           return project
         }
 

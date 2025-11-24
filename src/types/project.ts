@@ -1,5 +1,5 @@
 /**
- * Project interface - Freestyle.sh based
+ * Project interface - Local deployment
  * Matches backend ProjectResponse DTO
  */
 export interface Project {
@@ -10,8 +10,8 @@ export interface Project {
   status: 'initializing' | 'active' | 'failed' | 'deleted'
   created_at: string
 
-  // Freestyle.sh specific fields
-  sandbox_id?: string // Freestyle repo ID
+  // Local deployment fields
+  deployment_id?: string // Local deployment ID
   ephemeral_url?: string // Dev server URL
   mcp_ephemeral_url?: string // MCP server URL
 

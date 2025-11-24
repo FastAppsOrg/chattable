@@ -33,7 +33,7 @@ export function createProjectsRoutes(
 
       const dbProject = await dbService.createProject({
         userId: user.id,
-        freestyleRepoId: deployment.projectId,
+        deploymentId: deployment.projectId,
         name: name || 'Untitled Project',
         gitUrl: gitUrl || templateUrl,
         gitBranch: gitBranch || 'main',
@@ -49,7 +49,7 @@ export function createProjectsRoutes(
         default_branch: dbProject.gitBranch,
         status: dbProject.status,
         created_at: dbProject.createdAt,
-        deployment_id: dbProject.freestyleRepoId,
+        deployment_id: dbProject.deploymentId,
         ephemeral_url: dbProject.ephemeralUrl,
         mcp_ephemeral_url: dbProject.mcpEphemeralUrl,
         mcp: deployment.mcp,
@@ -87,7 +87,7 @@ export function createProjectsRoutes(
         default_branch: p.gitBranch,
         status: p.status,
         created_at: p.createdAt,
-        deployment_id: p.freestyleRepoId,
+        deployment_id: p.deploymentId,
         ephemeral_url: p.ephemeralUrl,
         mcp_ephemeral_url: p.mcpEphemeralUrl,
       }));
@@ -128,7 +128,7 @@ export function createProjectsRoutes(
         default_branch: project.gitBranch,
         status: project.status,
         created_at: project.createdAt,
-        deployment_id: project.freestyleRepoId,
+        deployment_id: project.deploymentId,
         ephemeral_url: project.ephemeralUrl,
         mcp_ephemeral_url: project.mcpEphemeralUrl,
       });
@@ -209,9 +209,9 @@ export function createProjectsRoutes(
         containerStatus = 'starting';
       } else if (project.status === 'failed') {
         containerStatus = 'error';
-      } else if (project.status === 'active' && project.freestyleRepoId) {
+      } else if (project.status === 'active' && project.deploymentId) {
         try {
-          const status = await deploymentService.getProjectStatus(project.freestyleRepoId);
+          const status = await deploymentService.getProjectStatus(project.deploymentId);
           containerStatus = status.containerStatus;
         } catch (error: any) {
           console.error('[Projects] Failed to get deployment status:', error.message);
@@ -253,7 +253,7 @@ export function createProjectsRoutes(
         return res.status(404).json({ error: 'Project not found' });
       }
 
-      if (!project.freestyleRepoId) {
+      if (!project.deploymentId) {
         return res.status(400).json({
           error: 'Cannot restart project',
           message: 'Project has no deployment ID',
@@ -267,7 +267,7 @@ export function createProjectsRoutes(
         });
       }
 
-      const deployment = await deploymentService.restartProject(project.freestyleRepoId);
+      const deployment = await deploymentService.restartProject(project.deploymentId);
 
       await dbService.updateProject(id, user.id, {
         ephemeralUrl: deployment.ephemeralUrl,
@@ -313,9 +313,9 @@ export function createProjectsRoutes(
         return res.status(404).json({ error: 'Project not found' });
       }
 
-      if (name && updatedProject.freestyleRepoId) {
+      if (name && updatedProject.deploymentId) {
         try {
-          await deploymentService.updateProject(updatedProject.freestyleRepoId, { name });
+          await deploymentService.updateProject(updatedProject.deploymentId, { name });
         } catch (error: any) {
           console.error('[Projects] Failed to update deployment name:', error);
         }
@@ -329,7 +329,7 @@ export function createProjectsRoutes(
         default_branch: updatedProject.gitBranch,
         status: updatedProject.status,
         created_at: updatedProject.createdAt,
-        deployment_id: updatedProject.freestyleRepoId,
+        deployment_id: updatedProject.deploymentId,
         ephemeral_url: updatedProject.ephemeralUrl,
         mcp_ephemeral_url: updatedProject.mcpEphemeralUrl,
       });
@@ -361,15 +361,15 @@ export function createProjectsRoutes(
         return res.status(404).json({ error: 'Project not found' });
       }
 
-      if (project.freestyleRepoId) {
+      if (project.deploymentId) {
         try {
-          await deploymentService.deleteProject(project.freestyleRepoId);
+          await deploymentService.deleteProject(project.deploymentId);
         } catch (error: any) {
           console.error('[Projects] Failed to delete deployment (continuing):', error.message);
         }
       }
 
-      await mcpService.closeClient(project.freestyleRepoId);
+      await mcpService.closeClient(project.deploymentId);
       await dbService.deleteProject(id, user.id);
 
       res.json({
@@ -622,7 +622,7 @@ export function createProjectsRoutes(
         return res.status(404).json({ error: 'Project not found' });
       }
 
-      const isLocal = project.freestyleRepoId?.startsWith('local-');
+      const isLocal = project.deploymentId?.startsWith('local-');
 
       if (!isLocal) {
         return res.status(400).json({
@@ -635,7 +635,7 @@ export function createProjectsRoutes(
       const path = await import('path');
       const os = await import('os');
 
-      const projectDir = path.join(os.homedir(), '.appkit-local-projects', project.freestyleRepoId!);
+      const projectDir = path.join(process.cwd(), '.chattable', project.deploymentId!);
       const targetDir = path.join(projectDir, dirPath as string);
 
       // Security check
@@ -714,14 +714,14 @@ export function createProjectsRoutes(
         });
       }
 
-      const isLocal = project.freestyleRepoId?.startsWith('local-');
+      const isLocal = project.deploymentId?.startsWith('local-');
 
       if (isLocal) {
         const { readFile } = await import('fs/promises');
         const path = await import('path');
         const os = await import('os');
 
-        const projectDir = path.join(os.homedir(), '.appkit-local-projects', project.freestyleRepoId!);
+        const projectDir = path.join(process.cwd(), '.chattable', project.deploymentId!);
         const fullPath = path.join(projectDir, filePath);
         const normalizedPath = path.normalize(fullPath);
         if (!normalizedPath.startsWith(path.normalize(projectDir))) {

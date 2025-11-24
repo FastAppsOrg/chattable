@@ -10,10 +10,9 @@ import { createProjectsRoutes } from './routes/projects.routes.js';
 import { createSecretsRoutes } from './routes/secrets.routes.js';
 import { createAuthRoutes } from './routes/auth.routes.js';
 import { createGitHubRoutes } from './routes/github.routes.js';
+import { createGitRoutes } from './routes/git.routes.js';
 // import { createDevRoutes } from './routes/dev.routes.js';
-import { FreestyleService } from './services/freestyle.service.js';
-import { FlyioDeploymentAdapter } from './services/deployment/flyio.adapter.js';
-import { LocalMockDeploymentAdapter } from './services/deployment/local-mock.adapter.js';
+import { LocalDeploymentAdapter } from './services/deployment/local.adapter.js';
 import { dbService } from './db/db.service.js';
 import { sessionService } from './services/session.service.js';
 import { MCPService } from './services/mcp.service.js';
@@ -33,24 +32,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
-const freestyleApiKey = process.env.FREESTYLE_API_KEY;
-const flyioApiToken = process.env.FLYIO_API_TOKEN;
-const openaiApiKey = process.env.OPENAI_API_KEY;
-
-let deploymentService;
-const useLocalMock = process.env.NODE_ENV === 'development' && !process.env.FORCE_CLOUD_DEPLOY;
-
-if (useLocalMock) {
-  const mockUrl = 'https://apps-sdk-template-5697e518.alpic.live';
-  deploymentService = new LocalMockDeploymentAdapter(mockUrl);
-} else if (flyioApiToken) {
-  deploymentService = new FlyioDeploymentAdapter(flyioApiToken);
-} else if (freestyleApiKey) {
-  deploymentService = new FreestyleService(freestyleApiKey);
-} else {
-  console.error('❌ Either FLYIO_API_TOKEN or FREESTYLE_API_KEY is required (or use NODE_ENV=development for local mock)');
-  process.exit(1);
-}
+// Local-first deployment - all projects managed in .chattable folder
+console.log('🏠 Using Local Deployment Adapter (projects in .chattable folder)');
+const deploymentService = new LocalDeploymentAdapter();
 
 const mcpService = new MCPService();
 setDatabaseService(dbService);
@@ -103,6 +87,7 @@ app.use('/auth', createAuthRoutes(sessionService));
 // Routes (require authentication, but widget-content uses query token)
 app.use('/api/projects', conditionalAuthMiddleware, createProjectsRoutes(deploymentService, dbService, mcpService));
 app.use('/api/secrets', createSecretsRoutes());
+app.use('/api/git', authMiddleware, createGitRoutes());
 app.use('/github', authMiddleware, createGitHubRoutes());
 
 // Mastra routes - auth middleware applied for project updates

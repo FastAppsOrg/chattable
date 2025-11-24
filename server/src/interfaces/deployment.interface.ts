@@ -1,8 +1,7 @@
 /**
  * Deployment Service Interface
  *
- * Abstraction layer for different deployment providers (Freestyle, Fly.io, Local, etc.)
- * This allows easy switching between providers without changing business logic.
+ * Interface for local project deployment and management.
  */
 
 /**
@@ -10,7 +9,7 @@
  * This is what Mastra needs to connect to the project's filesystem
  */
 export interface McpConnectionInfo {
-  /** MCP endpoint URL (e.g., http://localhost:8080/sse or https://app.fly.dev:8080/sse) */
+  /** MCP endpoint URL (e.g., http://localhost:8080/mcp) */
   url: string;
 
   /** Transport protocol */

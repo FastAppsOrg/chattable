@@ -28,7 +28,7 @@
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.44.7",
     "express": "^4.18.2",
-    "freestyle-sandboxes": "^0.0.97",
+    "simple-git": "^3.30.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "ws": "^8.16.0",

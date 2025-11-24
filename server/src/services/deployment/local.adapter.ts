@@ -30,15 +30,17 @@ export class LocalDeploymentAdapter implements IDeploymentService {
   private runningProcesses = new Map<string, ProcessInfo>();
 
   constructor() {
-    this.projectsDir = path.join(os.homedir(), '.appkit-local-projects');
+    this.projectsDir = path.join(process.cwd(), '.chattable');
   }
 
   /**
    * Create a new local project
    */
   async createProject(options: CreateProjectOptions): Promise<DeploymentProject> {
-    const { userId, templateUrl, name } = options;
-    const projectId = `local-${userId}-${Date.now()}`;
+    const { userId, name } = options;
+    // Use name as ID if possible, otherwise fallback to timestamp
+    const safeName = name ? name.toLowerCase().replace(/[^a-z0-9-]/g, '-') : `project-${Date.now()}`;
+    const projectId = safeName;
     const projectDir = path.join(this.projectsDir, projectId);
 
     console.log(`[Local] Creating project: ${projectId}`);
@@ -47,9 +49,17 @@ export class LocalDeploymentAdapter implements IDeploymentService {
     try {
       await mkdir(projectDir, { recursive: true });
 
-      const gitUrl = templateUrl || 'https://github.com/alpic-ai/apps-sdk-template';
+      // Fixed template URL as requested
+      const gitUrl = 'https://github.com/Jhvictor4/apps-sdk-template';
       console.log(`[Local] Cloning ${gitUrl}...`);
-      await execAsync(`git clone ${gitUrl} .`, { cwd: projectDir });
+
+      // Check if directory is empty
+      const files = await execAsync('ls -A', { cwd: projectDir }).catch(() => ({ stdout: '' }));
+      if (files.stdout.trim()) {
+        console.log(`[Local] Directory not empty, skipping clone...`);
+      } else {
+        await execAsync(`git clone ${gitUrl} .`, { cwd: projectDir });
+      }
 
       console.log(`[Local] Installing dependencies...`);
       const hasPnpmWorkspace = await execAsync('test -f pnpm-workspace.yaml && echo "yes" || echo "no"', { cwd: projectDir })
@@ -129,11 +139,10 @@ export class LocalDeploymentAdapter implements IDeploymentService {
     } catch (error: any) {
       console.error(`[Local] Failed to create project:`, error);
 
-      try {
-        await rm(projectDir, { recursive: true, force: true });
-      } catch (cleanupError) {
-        console.error(`[Local] Cleanup failed:`, cleanupError);
-      }
+      // Only cleanup if we created the directory and it failed immediately
+      // For now, let's be safe and NOT delete potentially existing user data if it wasn't empty
+      // But since we did mkdir, we might want to cleanup if it was empty.
+      // Keeping it simple: don't auto-delete for now to avoid accidents in local mode.
 
       throw new Error(`Failed to create local project: ${error.message}`);
     }

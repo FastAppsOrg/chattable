@@ -8,7 +8,7 @@ export const projects = sqliteTable('projects', {
   name: text('name'),
   description: text('description'),
 
-  freestyleRepoId: text('freestyle_repo_id').notNull().unique(),
+  deploymentId: text('deployment_id').notNull().unique(),
   gitUrl: text('git_url'),
   gitBranch: text('git_branch').default('main'),
 
