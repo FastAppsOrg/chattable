@@ -6,9 +6,9 @@
  */
 
 // Mock data
-const MOCK_CHAT_HISTORY = []
-const MOCK_PROJECTS = []
-const MOCK_SECRETS_STATUS = {
+const MOCK_CHAT_HISTORY: any[] = []
+const MOCK_PROJECTS: any[] = []
+const MOCK_SECRETS_STATUS: Record<string, boolean | null> = {
   claude_api_key: false,
   github_token: false,
   linear_api_key: false,

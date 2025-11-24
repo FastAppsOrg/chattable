@@ -10,7 +10,7 @@ import { createProjectsRoutes } from './routes/projects.routes.js';
 import { createSecretsRoutes } from './routes/secrets.routes.js';
 import { createAuthRoutes } from './routes/auth.routes.js';
 import { createGitHubRoutes } from './routes/github.routes.js';
-import { createDevRoutes } from './routes/dev.routes.js';
+// import { createDevRoutes } from './routes/dev.routes.js';
 import { FreestyleService } from './services/freestyle.service.js';
 import { FlyioDeploymentAdapter } from './services/deployment/flyio.adapter.js';
 import { LocalMockDeploymentAdapter } from './services/deployment/local-mock.adapter.js';
@@ -109,7 +109,7 @@ app.use('/github', authMiddleware, createGitHubRoutes());
 app.use('/api/mastra', authMiddleware, mastraRoutes);
 
 // Development routes (no auth required for local dev)
-app.use('/api/dev', createDevRoutes());
+// app.use('/api/dev', createDevRoutes());
 
 /**
  * @swagger

@@ -143,7 +143,7 @@ export function useMemoizedHandler<T extends (...args: any[]) => any>(
  */
 export function usePerformanceMonitor(componentName: string) {
   const renderCount = useRef(0)
-  const renderStartTime = useRef<number>()
+  const renderStartTime = useRef<number>(0)
 
   useEffect(() => {
     renderCount.current++
@@ -167,8 +167,8 @@ export function usePerformanceMonitor(componentName: string) {
  * Request Animation Frame hook for smooth animations
  */
 export function useAnimationFrame(callback: (deltaTime: number) => void) {
-  const requestRef = useRef<number>()
-  const previousTimeRef = useRef<number>()
+  const requestRef = useRef<number>(0)
+  const previousTimeRef = useRef<number>(0)
 
   const animate = useCallback(
     (time: number) => {

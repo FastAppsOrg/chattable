@@ -18,6 +18,7 @@ export interface Project {
   // Future deployment fields
   deployed_url?: string
   last_deployed_at?: string
+  default_workspace?: any
 }
 
 export interface CreateProjectForm {

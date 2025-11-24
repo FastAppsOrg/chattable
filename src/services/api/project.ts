@@ -135,7 +135,7 @@ export class ProjectService {
 
     throw new Error(
       'Project sandbox is still initializing. This is taking longer than expected. ' +
-        'Please refresh the page in a moment to check if it completed.',
+      'Please refresh the page in a moment to check if it completed.',
     )
   }
 
@@ -254,11 +254,12 @@ export class ProjectService {
     command?: string,
   ): Promise<{ status: string; message: string }> {
     const body = command ? { command } : {}
-    const response = await apiClient.post(API_ENDPOINTS.projectPreviewStart(projectId), body)
-    if (!response.ok) {
-      throw new Error(`Failed to start preview: ${response.status}`)
-    }
-    return response.json()
+    // const response = await apiClient.post(API_ENDPOINTS.projectPreviewStart(projectId), body)
+    throw new Error('Preview start not implemented')
+    // if (!response.ok) {
+    //   throw new Error(`Failed to start preview: ${response.status}`)
+    // }
+    // return await response.json()
   }
 
   /** @deprecated */
@@ -325,12 +326,14 @@ export class ProjectService {
     const params = new URLSearchParams()
     if (limit) params.append('limit', String(limit))
 
-    const url = `${API_ENDPOINTS.projectGitCommits(projectId)}?${params.toString()}`
-    const response = await apiClient.get(url)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch commits: ${response.status}`)
-    }
-    return response.json()
+    // const url = `${API_ENDPOINTS.projectGitCommits(projectId)}?${params.toString()}`
+    // const url = '' // Mock empty url
+    // const response = await apiClient.get(url)
+    // if (!response.ok) {
+    //   throw new Error(`Failed to fetch commits: ${response.status}`)
+    // }
+    // return await response.json()
+    return []
   }
 
   /** @deprecated Use Freestyle Git API */

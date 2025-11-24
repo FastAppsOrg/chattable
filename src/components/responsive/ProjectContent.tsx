@@ -12,9 +12,9 @@ import { ResponsiveProjectContent } from '../responsive/ResponsiveProjectContent
 import { useNavigate } from 'react-router-dom'
 import { useGitCommits } from '../../hooks/useGitCommits'
 import type { Project } from '../../types/project'
-import type { InspectorSelectionData } from '../../types'
+// import type { InspectorSelectionData } from '../../types'
 import { ProjectService } from '../../services/api/project'
-import type { EmbeddedBrowserHandle } from '../preview/EmbeddedBrowser'
+// import type { EmbeddedBrowserHandle } from '../preview/EmbeddedBrowser'
 import type { PreviewMode } from '../workspace/PreviewModeSelector'
 
 interface ProjectContentProps {
@@ -36,7 +36,7 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
   const [previewMode, setPreviewMode] = useState<PreviewMode>('gallery')
 
   const previewPanelRef = useRef<ImperativePanelHandle>(null)
-  const browserRef = useRef<EmbeddedBrowserHandle>(null)
+  // const browserRef = useRef<EmbeddedBrowserHandle>(null)
   const [viewportWidth, setViewportWidth] = useState(0)
   const [viewportHeight, setViewportHeight] = useState(0)
   const [leftPanelSize, setLeftPanelSize] = useState(30) // Track left panel size for navbar alignment
@@ -131,11 +131,11 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
 
   // Browser control handlers
   const handleRefresh = useCallback(() => {
-    browserRef.current?.refresh()
+    // browserRef.current?.refresh()
   }, [])
 
   const handleOpenExternal = useCallback(() => {
-    browserRef.current?.openExternal()
+    // browserRef.current?.openExternal()
   }, [])
 
   const handleToggleChatFloating = useCallback(() => {
@@ -375,20 +375,20 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                 <div className="chat-section" style={{ height: '100%' }}>
                   <ErrorBoundary>
                     <ChatPanel
-                    key={`chat-${project?.project_id}-docked`}
-                    projectId={project?.project_id}
-                    projectName={project.name}
-                    onBack={handleBack}
-                    externalInput={selectedElementInput}
-                    onExternalInputConsumed={() => setSelectedElementInput('')}
-                    selectedElements={selectedElements}
-                    onRemoveElement={(index) => {
-                      setSelectedElements((prev) => prev.filter((_, i) => i !== index))
-                    }}
-                    sandboxReady={project?.status === 'active' && !!project?.ephemeral_url}
-                    onClearElements={() => setSelectedElements([])}
-                  />
-                </ErrorBoundary>
+                      key={`chat-${project?.project_id}-docked`}
+                      projectId={project?.project_id}
+                      projectName={project.name}
+                      onBack={handleBack}
+                      externalInput={selectedElementInput}
+                      onExternalInputConsumed={() => setSelectedElementInput('')}
+                      selectedElements={selectedElements}
+                      onRemoveElement={(index) => {
+                        setSelectedElements((prev) => prev.filter((_, i) => i !== index))
+                      }}
+                      sandboxReady={project?.status === 'active' && !!project?.ephemeral_url}
+                      onClearElements={() => setSelectedElements([])}
+                    />
+                  </ErrorBoundary>
                 </div>
               </Panel>
 
@@ -448,7 +448,7 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
       selectedElementInput={selectedElementInput}
       selectedElements={selectedElements}
       onBack={handleBack}
-      onElementSelected={() => {}}
+      onElementSelected={() => { }}
       onExternalInputConsumed={() => setSelectedElementInput('')}
       onRemoveElement={(index) => {
         setSelectedElements((prev) => prev.filter((_, i) => i !== index))

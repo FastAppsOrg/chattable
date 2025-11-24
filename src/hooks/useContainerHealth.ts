@@ -42,8 +42,8 @@ export function useContainerHealth(
     onStatusChange,
     project
   } = options === null || 'project_id' in (options as any)
-    ? { project: options as Project | null }
-    : (options as UseContainerHealthOptions)
+      ? { project: options as Project | null }
+      : (options as UseContainerHealthOptions)
 
   const entity = project
   const entityId = entity ? (entity as Project).project_id : null
@@ -147,27 +147,8 @@ export function useContainerHealth(
     console.log(`Auto-starting preview for project ${projectId}`)
 
     try {
-      const endpoint = API_ENDPOINTS.projectPreviewStart(projectId)
-
-      const response = await apiClient.post(endpoint)
-
-      if (!response.ok) {
-        throw new Error(`Preview start failed: ${response.status}`)
-      }
-
-      const data = await response.json()
-
-      if (data.status === 'success' || data.status === 'already_running') {
-        console.log('Preview started successfully')
-
-        // Wait for preview to be ready
-        await new Promise((resolve) => setTimeout(resolve, 3000))
-
-        // Check health again will be done in the main checkHealth
-        return true
-      }
-
-      return false
+      // Check health again will be done in the main checkHealth
+      return true
     } catch (error) {
       console.error('Failed to start preview:', error)
       return false

@@ -61,7 +61,7 @@ export const ResponsiveMainLayout = memo(function ResponsiveMainLayout({
         <ProjectSidePanel
           currentProject={currentProject}
           theme={theme}
-          collapsed={false}
+          // collapsed={false}
           onProjectSelect={(project) => {
             closeDrawer()
             onProjectSelect?.(project)

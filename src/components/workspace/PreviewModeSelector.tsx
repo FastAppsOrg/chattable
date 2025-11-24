@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Monitor, Flame, KanbanSquare, LayoutGrid, MessageSquare, Code2 } from 'lucide-react'
+import React from 'react'
+import { Monitor, Code2, LayoutTemplate, Bot, Flame, LayoutGrid } from 'lucide-react'
 import './PreviewModeSelector.css'
 
 export type PreviewMode = 'gallery' | 'sandbox' | 'code'
@@ -7,7 +7,7 @@ export type PreviewMode = 'gallery' | 'sandbox' | 'code'
 interface PreviewModeOption {
   id: PreviewMode
   label: string
-  icon: JSX.Element
+  icon: React.ReactNode
   description: string
   disabled?: boolean
 }

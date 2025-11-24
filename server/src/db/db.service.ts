@@ -67,20 +67,7 @@ export class DatabaseService {
       .where(and(...conditions));
   }
 
-  /**
-   * @deprecated Use Mastra Memory instead. Messages are automatically saved when using agent.stream() with memory context.
-   */
-  async saveChatMessage(message: NewChatMessage): Promise<ChatMessage | null> {
-    try {
-      const [saved] = await db.insert(chatMessages).values(message).returning();
-      return saved;
-    } catch (error: any) {
-      if (error?.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        return null;
-      }
-      throw error;
-    }
-  }
+
 
 }
 
