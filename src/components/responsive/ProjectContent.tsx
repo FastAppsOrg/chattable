@@ -265,7 +265,7 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      backgroundColor: 'rgba(26, 26, 26, 0.95)',
+                      backgroundColor: 'var(--color-bg-overlay)',
                       backdropFilter: 'blur(8px)',
                       zIndex: 1001,
                       display: 'flex',
@@ -320,9 +320,10 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                 width: '400px',
                 height: '600px',
                 maxHeight: 'calc(100vh - 100px)',
-                backgroundColor: '#1a1a1a',
-                borderRadius: '12px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                backgroundColor: 'var(--color-bg-elevated)',
+                borderRadius: 'var(--radius-xl)',
+                boxShadow: 'var(--shadow-xl)',
+                border: '1px solid var(--color-border-default)',
                 zIndex: 1000,
                 display: 'flex',
                 flexDirection: 'column',
@@ -337,13 +338,18 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '12px 16px',
-                  borderBottom: '1px solid #333',
-                  backgroundColor: '#1a1a1a',
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  borderBottom: '1px solid var(--color-border-default)',
+                  backgroundColor: 'var(--color-bg-elevated)',
                   cursor: isDragging ? 'grabbing' : 'grab',
                 }}
               >
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#f0f0f0', pointerEvents: 'none' }}>
+                <span style={{ 
+                  fontSize: 'var(--font-size-sm)', 
+                  fontWeight: 'var(--font-weight-medium)', 
+                  color: 'var(--color-text-primary)', 
+                  pointerEvents: 'none' 
+                }}>
                   Chat
                 </span>
                 <button
@@ -357,14 +363,14 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#888',
-                    transition: 'color 0.2s',
+                    color: 'var(--color-icon-tertiary)',
+                    transition: 'color var(--duration-fast)',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.color = '#f0f0f0'
+                    e.currentTarget.style.color = 'var(--color-icon-primary)'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.color = '#888'
+                    e.currentTarget.style.color = 'var(--color-icon-tertiary)'
                   }}
                   title="Dock Chat Panel"
                 >
@@ -477,7 +483,7 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                           left: 0,
                           right: 0,
                           bottom: 0,
-                          backgroundColor: 'rgba(26, 26, 26, 0.95)',
+                          backgroundColor: 'var(--color-bg-overlay)',
                           backdropFilter: 'blur(8px)',
                           zIndex: 1001,
                           display: 'flex',
@@ -534,7 +540,7 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
-        color: '#666',
+        color: 'var(--color-text-tertiary)',
       }}
     >
       <div>No project selected</div>

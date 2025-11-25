@@ -190,7 +190,14 @@ export class LocalDeploymentAdapter implements IDeploymentService {
         console.log(`[Local] Detected monorepo, running dev server from ./server`);
       }
 
-      const devProcess = spawn(hasPnpmWorkspace ? 'pnpm' : 'npm', ['run', 'dev'], {
+      // Use sh -c to explicitly set PORT in the shell command
+      // This ensures it propagates to all child processes/scripts (like skybridge)
+      const pkgManager = hasPnpmWorkspace ? 'pnpm' : 'npm';
+      const devCommand = `PORT=${devPort} ${pkgManager} run dev`;
+
+      console.log(`[Local] Spawning dev server: ${devCommand}`);
+
+      const devProcess = spawn('sh', ['-c', devCommand], {
         cwd: devCwd,
         env: {
           ...process.env,

@@ -3,44 +3,44 @@
   align-items: center;
   justify-content: center;
   min-height: 400px;
-  padding: 2rem;
+  padding: var(--spacing-lg);
 }
 
 .progressCard {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 2rem;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
   max-width: 600px;
   width: 100%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
 }
 
 .title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0 0 1.5rem 0;
-  color: var(--text-primary);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 var(--spacing-md) 0;
+  color: var(--color-text-primary);
   text-align: center;
 }
 
 .stepsContainer {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
 }
 
 .stepItem {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
-  padding: 1rem;
-  background: var(--bg-primary);
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  transition: all 0.3s ease;
-  animation: slideIn 0.3s ease;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-default);
+  transition: all var(--duration-normal) var(--easing-default);
+  animation: slideIn var(--duration-normal) var(--easing-out);
 }
 
 @keyframes slideIn {
@@ -55,17 +55,17 @@
 }
 
 .stepItem.complete {
-  border-color: var(--success);
-  background: var(--success-bg, rgba(34, 197, 94, 0.1));
+  border-color: var(--color-success-border);
+  background: var(--color-success-bg);
 }
 
 .stepItem.error {
-  border-color: var(--danger);
-  background: var(--danger-bg, rgba(239, 68, 68, 0.1));
+  border-color: var(--color-error-border);
+  background: var(--color-error-bg);
 }
 
 .stepIcon {
-  font-size: 1.5rem;
+  font-size: var(--font-size-2xl);
   flex-shrink: 0;
   line-height: 1;
 }
@@ -76,34 +76,35 @@
 }
 
 .stepLabel {
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.25rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-1);
+  font-size: var(--font-size-base);
 }
 
 .stepMessage {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
 }
 
 .stepProgress {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
   flex-shrink: 0;
 }
 
 .progressBar {
   width: 100%;
   height: 8px;
-  background: var(--bg-tertiary);
-  border-radius: 4px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .progressBarFill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary), var(--primary-hover));
-  transition: width 0.5s ease;
-  border-radius: 4px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
+  transition: width var(--duration-slow) var(--easing-out);
+  border-radius: var(--radius-sm);
 }
