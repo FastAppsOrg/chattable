@@ -52,9 +52,8 @@ export class LocalDeploymentAdapter implements IDeploymentService {
    */
   async createProject(options: CreateProjectOptions): Promise<DeploymentProject> {
     const { userId, name, dbProjectId } = options;
-    // Use name as ID if possible, otherwise fallback to timestamp
-    const safeName = name ? name.toLowerCase().replace(/[^a-z0-9-]/g, '-') : `project-${Date.now()}`;
-    const projectId = safeName;
+    // Use database project ID as folder name for easy tracking
+    const projectId = dbProjectId || `project-${Date.now()}`;
     const projectDir = path.join(this.projectsDir, projectId);
 
     console.log(`[Local] Creating project: ${projectId}`);
