@@ -123,8 +123,14 @@ export class MCPService {
         throw new Error(`Tool '${toolName}' not found. Available: ${Object.keys(tools).join(', ')}`);
       }
 
-      // Execute the tool directly
-      const result = await tool.execute(params);
+      // Ensure params is always an object (even if empty)
+      const safeParams = params && typeof params === 'object' ? params : {};
+
+      console.log(`[MCP] callTool(${toolName}) with params:`, JSON.stringify(safeParams));
+
+      // Mastra tool.execute expects { context: params } format
+      // See: https://mastra.ai/docs/tools
+      const result = await tool.execute({ context: safeParams });
       return result;
     } catch (error) {
       console.error(`[MCP] callTool(${toolName}) failed:`, error);

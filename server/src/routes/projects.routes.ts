@@ -3,6 +3,8 @@ import { IDeploymentService } from '../interfaces/deployment.interface.js';
 import { DatabaseService } from '../db/db.service.js';
 import { MCPService } from '../services/mcp.service.js';
 import { MemoryService } from '../services/memory.service.js';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import type { ZodType } from 'zod';
 
 export function createProjectsRoutes(
   deploymentService: IDeploymentService,
@@ -606,16 +608,48 @@ export function createProjectsRoutes(
 
       const toolsRecord = await mcpService.getTools(project.mcpEphemeralUrl);
 
+      // Debug: Log full tool structure
+      const firstToolName = Object.keys(toolsRecord)[0];
+      if (firstToolName) {
+        const t = toolsRecord[firstToolName];
+        console.log('[MCP Tools Debug] Full tool keys:', Object.keys(t));
+        console.log('[MCP Tools Debug] tool.parameters:', t.parameters);
+        console.log('[MCP Tools Debug] tool.parameters?.jsonSchema:', t.parameters?.jsonSchema);
+        console.log('[MCP Tools Debug] tool.inputSchema type:', typeof t.inputSchema);
+        console.log('[MCP Tools Debug] tool.inputSchema keys:', t.inputSchema ? Object.keys(t.inputSchema) : 'null');
+      }
+
       // Convert Record<string, Tool> to array format for frontend compatibility
       // MCPClient.getTools() returns { main_toolName: { description, inputSchema, execute, ... } }
       // Frontend expects: [{ name: 'toolName', description, inputSchema, ... }]
       // Strip 'main_' prefix since we only have one server
-      const toolsArray = Object.entries(toolsRecord).map(([name, tool]: [string, any]) => ({
-        name: name.replace(/^main_/, ''), // Remove 'main_' prefix
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-        _meta: tool._meta,
-      }));
+      // Note: Mastra converts inputSchema to Zod - we need to convert it back to JSON Schema
+      const toolsArray = Object.entries(toolsRecord).map(([name, tool]: [string, any]) => {
+        // Mastra MCPClient converts the original JSON schema to Zod
+        // We need to convert it back to JSON Schema for the frontend
+        let jsonSchema: any = { type: 'object', properties: {} };
+
+        try {
+          // Check if inputSchema is a Zod schema (has _def property)
+          if (tool.inputSchema && tool.inputSchema._def) {
+            jsonSchema = zodToJsonSchema(tool.inputSchema as ZodType);
+            // Remove $schema and $ref from root if present
+            delete jsonSchema.$schema;
+          } else if (tool.inputSchema && typeof tool.inputSchema === 'object' && !tool.inputSchema['~standard']) {
+            // Already a plain JSON schema
+            jsonSchema = tool.inputSchema;
+          }
+        } catch (e) {
+          console.warn(`[MCP Tools] Failed to convert Zod schema for ${name}:`, e);
+        }
+
+        return {
+          name: name.replace(/^main_/, ''), // Remove 'main_' prefix
+          description: tool.description,
+          inputSchema: jsonSchema,
+          _meta: tool._meta,
+        };
+      });
 
       res.json({
         tools: toolsArray,

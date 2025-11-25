@@ -983,74 +983,367 @@
 .message-tools {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 4px;
+  margin-bottom: 12px;
 }
 
 .tool-invocation {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  background: rgba(64, 224, 208, 0.05);
-  border-left: 3px solid var(--color-info);
-  padding: 10px 12px;
-  border-radius: 6px;
+  background: rgba(64, 224, 208, 0.03);
+  border: 1px solid rgba(64, 224, 208, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s ease;
 }
 
-.tool-invocation .tool-content {
-  flex: 1;
-  min-width: 0;
+.tool-invocation:hover {
+  border-color: rgba(64, 224, 208, 0.3);
+}
+
+.tool-invocation.running {
+  border-color: rgba(64, 224, 208, 0.4);
+  background: rgba(64, 224, 208, 0.06);
+}
+
+.tool-invocation.completed {
+  border-color: rgba(64, 224, 208, 0.15);
+}
+
+.tool-invocation.expanded {
+  border-color: rgba(64, 224, 208, 0.4);
+}
+
+/* Main clickable header */
+.tool-main-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.tool-main-header:hover {
+  background: rgba(64, 224, 208, 0.05);
+}
+
+.tool-invocation .tool-icon {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .tool-invocation .tool-name {
   font-weight: var(--font-weight-medium);
   color: #00ffcc;
   text-transform: uppercase;
-  font-size: 11px;
-  margin-bottom: 4px;
-}
-
-.tool-invocation .tool-state {
-  font-weight: normal;
-  color: var(--color-text-secondary);
-  text-transform: none;
   font-size: 10px;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
 }
 
-.tool-invocation .tool-input {
+.tool-invocation .tool-summary {
   color: var(--color-text-secondary);
   font-size: 12px;
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
-.tool-invocation .tool-input code {
-  background: rgba(255, 255, 255, 0.05);
-  padding: 2px 6px;
-  border-radius: 4px;
+.tool-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.tool-spinner {
+  animation: spin 1s linear infinite;
+  color: #40E0D0;
+}
+
+.tool-check {
+  color: #00C851;
+}
+
+.tool-expand-icon {
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+}
+
+/* Tool body (expanded content) */
+.tool-body {
+  padding: 0 12px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid rgba(64, 224, 208, 0.1);
+}
+
+/* Expandable sections for input/output */
+.tool-expandable-section {
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.tool-expandable-section.input {
+  border-left: 2px solid #3b82f6;
+}
+
+.tool-expandable-section.output {
+  border-left: 2px solid #22c55e;
+}
+
+.tool-expandable-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.tool-expandable-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tool-expandable-title {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+}
+
+.tool-expandable-section.input .tool-expandable-title {
+  color: #60a5fa;
+}
+
+.tool-expandable-section.output .tool-expandable-title {
+  color: #4ade80;
+}
+
+.tool-expandable-preview {
+  flex: 1;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-expandable-content {
+  padding: 0 10px 10px 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.tool-expandable-content pre {
+  margin: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.tool-expandable-content code {
   font-family: 'SF Mono', Monaco, 'Courier New', monospace;
   font-size: 11px;
-  word-break: break-all;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Running indicator */
+.tool-running-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(64, 224, 208, 0.08);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #40E0D0;
+}
+
+/* TodoWrite specific styles */
+.tool-todo-list {
+  padding: 4px 0;
+}
+
+.tool-todo-list ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.tool-todo-list li {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.tool-todo-list input[type="checkbox"] {
+  margin-right: 8px;
 }
 
 /* AI SDK v5 - Reasoning/Thinking Styles */
 .message-reasoning {
   background: rgba(168, 85, 247, 0.08);
   border-left: 3px solid #a855f7;
-  padding: 10px 12px;
-  border-radius: 6px;
-  margin-bottom: 8px;
+  padding: 0;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
 }
 
 .reasoning-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(168, 85, 247, 0.05);
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s;
   font-weight: var(--font-weight-medium);
   color: #a855f7;
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
-  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+
+.reasoning-header:hover {
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.reasoning-icon {
+  font-size: 14px;
+}
+
+.reasoning-toggle {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
 }
 
 .reasoning-content {
   color: var(--color-text-secondary);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.6;
   white-space: pre-wrap;
+  padding: 0 14px 12px 14px;
+  max-height: 200px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.reasoning-content.expanded {
+  max-height: none;
+}
+
+.reasoning-expand-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  background: rgba(168, 85, 247, 0.05);
+  border: none;
+  border-top: 1px solid rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.reasoning-expand-btn:hover {
+  background: rgba(168, 85, 247, 0.1);
+}
+
+/* Streaming reasoning state */
+.message-reasoning.streaming {
+  border-left-color: #c084fc;
+}
+
+.message-reasoning.streaming .reasoning-header {
+  color: #c084fc;
+}
+
+.reasoning-spinner {
+  animation: spin 1s linear infinite;
+  color: #a855f7;
+}
+
+/* Light mode adjustments */
+[data-theme='light'] .tool-invocation {
+  background: rgba(64, 224, 208, 0.05);
+  border-color: rgba(64, 224, 208, 0.25);
+}
+
+[data-theme='light'] .tool-invocation:hover {
+  border-color: rgba(64, 224, 208, 0.4);
+}
+
+[data-theme='light'] .tool-invocation.running {
+  background: rgba(64, 224, 208, 0.08);
+  border-color: rgba(64, 224, 208, 0.5);
+}
+
+[data-theme='light'] .tool-main-header:hover {
+  background: rgba(64, 224, 208, 0.08);
+}
+
+[data-theme='light'] .tool-invocation .tool-name {
+  color: #0d9488;
+}
+
+[data-theme='light'] .tool-expandable-section {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme='light'] .tool-expandable-header:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme='light'] .tool-expandable-content code {
+  color: var(--color-text-primary);
+}
+
+[data-theme='light'] .tool-running-indicator {
+  background: rgba(64, 224, 208, 0.12);
+  color: #0d9488;
+}
+
+[data-theme='light'] .tool-spinner {
+  color: #0d9488;
+}
+
+[data-theme='light'] .message-reasoning {
+  background: rgba(168, 85, 247, 0.06);
+}
+
+[data-theme='light'] .reasoning-header {
+  background: rgba(168, 85, 247, 0.04);
+}
+
+[data-theme='light'] .reasoning-header:hover {
+  background: rgba(168, 85, 247, 0.08);
+}
+
+[data-theme='light'] .reasoning-spinner {
+  color: #9333ea;
 }
