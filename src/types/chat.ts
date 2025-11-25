@@ -49,11 +49,6 @@ export interface ChatPanelProps {
   projectName?: string
   onBack?: () => void
   connected?: boolean
-  externalInput?: string
-  onExternalInputConsumed?: () => void
-  selectedElements?: any[]
-  onRemoveElement?: (index: number) => void
-  onClearElements?: () => void
   sandboxReady?: boolean
 }
 
@@ -78,7 +73,7 @@ export interface TorchEvaluationProps {
 
 export interface ChatMessageProps {
   message: ChatMessage
-  onApplyPrompt: (prompt: string) => void
+  onApplyPrompt?: (prompt: string) => void
   isPending?: boolean
   isThinking?: boolean
 }

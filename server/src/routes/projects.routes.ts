@@ -1285,20 +1285,20 @@ export function createProjectsRoutes(
 
   /**
    * POST /api/projects/:projectId/chat
-   * Stream chat response using Mastra agent
+   * Stream chat response using Mastra agent with AI SDK streaming
    */
   router.post('/:projectId/chat', async (req: Request, res: Response) => {
     try {
       const { projectId } = req.params;
-      const { message } = req.body;
+      const { messages } = req.body;
       const user = (req as any).user;
 
       if (!user) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      if (!message) {
-        return res.status(400).json({ error: 'Message is required' });
+      if (!messages || !Array.isArray(messages) || messages.length === 0) {
+        return res.status(400).json({ error: 'Messages array is required' });
       }
 
       // Get project to access MCP URL
@@ -1312,15 +1312,13 @@ export function createProjectsRoutes(
         return res.status(400).json({ error: 'Project MCP server not available' });
       }
 
-      // Note: Messages are now automatically saved by Mastra Memory
-      // No need to manually save to chatMessages table
-
+      // Get MCP tools
       let mcpTools;
       try {
         mcpTools = await mcpService.getTools(project.mcpEphemeralUrl);
       } catch (error: any) {
         console.error('[Chat] Failed to get MCP tools:', error);
-        // If MCP server is not ready (e.g. fetch failed), return 503 so client can retry
+        // If MCP server is not ready, return 503 so client can retry
         if (error.message.includes('fetch failed') || error.code === 'ECONNREFUSED') {
           return res.status(503).json({
             error: 'Project tools are initializing',
@@ -1331,35 +1329,89 @@ export function createProjectsRoutes(
       }
 
       const { MemoryService } = await import('../services/memory.service.js');
-      const { createCodeEditorAgent, streamCodeEditing } = await import('../mastra/agents/code-editor.js');
+      const { createCodeEditorAgent } = await import('../mastra/agents/code-editor.js');
 
       const memory = await MemoryService.getMemory();
       const agent = createCodeEditorAgent(mcpTools, memory);
 
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('Transfer-Encoding', 'chunked');
+      // Get last user message from UIMessage format
+      const lastMessage = messages[messages.length - 1];
 
-      try {
-        let accumulatedResponse = '';
+      // UIMessage has .parts array, not .content
+      // Extract text from parts: [{ type: 'text', text: 'hello' }]
+      const userMessage = lastMessage.parts
+        ? lastMessage.parts
+          .filter((part: any) => part.type === 'text')
+          .map((part: any) => part.text)
+          .join('')
+        : lastMessage.content || ''; // Fallback for old format
 
-        // Stream with memory context (messages auto-saved by Mastra)
-        for await (const textChunk of streamCodeEditing(agent, message, projectId, user.id)) {
-          accumulatedResponse += textChunk;
-          res.write(textChunk);
-        }
+      console.log('[Chat] User message:', userMessage.substring(0, 100));
 
-        res.end();
-        console.log('[Chat] Stream completed, response saved to Mastra Memory automatically');
-      } catch (streamError: any) {
-        console.error('[Chat] Stream error:', streamError);
-        if (!res.headersSent) {
-          res.status(500).json({ error: streamError.message });
-        } else {
-          res.end();
-        }
+      if (!userMessage || !userMessage.trim()) {
+        return res.status(400).json({ error: 'Message content is required' });
       }
+
+      console.log('[Chat] Streaming response for user message');
+
+      // Stream with Mastra agent + Memory
+      const streamResult = await agent.stream(userMessage, {
+        memory: {
+          thread: projectId,
+          resource: user.id,
+        },
+      });
+
+      console.log('[Chat] Stream result obtained, creating UI message stream');
+
+      // Create AI SDK UI message stream using writer pattern
+      const { createUIMessageStream, createUIMessageStreamResponse } = await import('ai');
+
+      const uiStream = createUIMessageStream({
+        execute: async ({ writer }) => {
+          console.log('[Chat] Starting to write chunks...');
+          let chunkCount = 0;
+
+          // Use fullStream instead of textStream (textStream might be empty)
+          // @ts-ignore - Mastra types might not be fully updated
+          const fullStream = streamResult.fullStream;
+
+          if (!fullStream) {
+            console.error('[Chat] fullStream is not available, falling back to textStream');
+            for await (const chunk of streamResult.textStream) {
+              chunkCount++;
+              console.log(`[Chat] Writing chunk ${chunkCount}:`, chunk.substring(0, 50));
+
+              writer.write({
+                type: 'text-delta',
+                delta: chunk,
+                id: `msg-${Date.now()}`,
+              });
+            }
+          } else {
+            // Iterate fullStream and extract text-delta events
+            // @ts-ignore
+            for await (const part of fullStream) {
+              if (part.type === 'text-delta') {
+                chunkCount++;
+                // @ts-ignore
+                const content = part.textDelta || part.delta || part.text || '';
+                console.log(`[Chat] Writing text-delta ${chunkCount}:`, content.substring(0, 50));
+
+                writer.write({
+                  type: 'text-delta',
+                  delta: content,
+                  id: `msg-${Date.now()}`,
+                });
+              }
+            }
+          }
+
+          console.log(`[Chat] Finished writing ${chunkCount} chunks`);
+        },
+      });
+
+      return createUIMessageStreamResponse({ stream: uiStream });
 
     } catch (error: any) {
       console.error('[Chat] Error:', error);
