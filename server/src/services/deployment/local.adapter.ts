@@ -52,8 +52,9 @@ export class LocalDeploymentAdapter implements IDeploymentService {
    */
   async createProject(options: CreateProjectOptions): Promise<DeploymentProject> {
     const { userId, name, dbProjectId } = options;
-    // Use database project ID as folder name for easy tracking
-    const projectId = dbProjectId || `project-${Date.now()}`;
+    // Use name as ID if possible, otherwise fallback to timestamp
+    const safeName = name ? name.toLowerCase().replace(/[^a-z0-9-]/g, '-') : `project-${Date.now()}`;
+    const projectId = safeName;
     const projectDir = path.join(this.projectsDir, projectId);
 
     console.log(`[Local] Creating project: ${projectId}`);
@@ -167,41 +168,6 @@ export class LocalDeploymentAdapter implements IDeploymentService {
         await execAsync('npm install', { cwd: projectDir });
       }
 
-      // Patch skybridge in node_modules to respect PORT
-      // This is a workaround for the hardcoded localhost:3000 in skybridge
-      try {
-        console.log(`[Local] Patching skybridge in node_modules...`);
-
-        // Determine where node_modules is (root or server/)
-        let skybridgePath = path.join(projectDir, 'node_modules/skybridge/dist/src/server/server.js');
-
-        // Check if file exists, if not check server/node_modules (monorepo case)
-        try {
-          await readFile(skybridgePath);
-        } catch {
-          skybridgePath = path.join(projectDir, 'server/node_modules/skybridge/dist/src/server/server.js');
-        }
-
-        let skybridgeCode = await readFile(skybridgePath, 'utf-8');
-
-        // Replace hardcoded localhost:3000 with dynamic port
-        // Original: : `http://localhost:3000`;
-        // New: : `http://localhost:${process.env.PORT || 3000}`;
-        if (skybridgeCode.includes('`http://localhost:3000`')) {
-          skybridgeCode = skybridgeCode.replace(
-            '`http://localhost:3000`',
-            '`http://localhost:${process.env.PORT || 3000}`'
-          );
-          await writeFile(skybridgePath, skybridgeCode);
-          console.log(`[Local] Successfully patched skybridge at ${skybridgePath}`);
-        } else {
-          console.log(`[Local] Skybridge already patched or pattern not found`);
-        }
-      } catch (error: any) {
-        console.warn(`[Local] Failed to patch skybridge:`, error.message);
-        // Don't fail the whole process, just warn
-      }
-
       const devPort = await this.findAvailablePort(40000);
 
       console.log(`[Local] Dev server will run on port ${devPort}`);
@@ -224,14 +190,7 @@ export class LocalDeploymentAdapter implements IDeploymentService {
         console.log(`[Local] Detected monorepo, running dev server from ./server`);
       }
 
-      // Use sh -c to explicitly set PORT in the shell command
-      // This ensures it propagates to all child processes/scripts (like skybridge)
-      const pkgManager = hasPnpmWorkspace ? 'pnpm' : 'npm';
-      const devCommand = `PORT=${devPort} ${pkgManager} run dev`;
-
-      console.log(`[Local] Spawning dev server: ${devCommand}`);
-
-      const devProcess = spawn('sh', ['-c', devCommand], {
+      const devProcess = spawn(hasPnpmWorkspace ? 'pnpm' : 'npm', ['run', 'dev'], {
         cwd: devCwd,
         env: {
           ...process.env,

@@ -275,15 +275,31 @@ export function ChatPanel({
       // Sync project title after first message
       if (!firstMessageSentRef.current && currentProjectId) {
         firstMessageSentRef.current = true
-        console.log('[ChatPanel] First message sent, syncing project title...')
-        setTimeout(async () => {
+        console.log('[ChatPanel] First message sent, polling for project title...')
+
+        // Poll for title generation (Mastra generates title asynchronously)
+        const pollTitle = async (attempt = 1, maxAttempts = 20) => {
           try {
-            await syncProjectTitle(currentProjectId)
-            console.log('[ChatPanel] Project title synced successfully')
+            const title = await syncProjectTitle(currentProjectId)
+            if (title) {
+              console.log(`[ChatPanel] Project title synced successfully after ${attempt} attempts: "${title}"`)
+              return
+            }
+
+            // Title not generated yet, retry
+            if (attempt < maxAttempts) {
+              console.log(`[ChatPanel] Title not ready, retrying (${attempt}/${maxAttempts})...`)
+              setTimeout(() => pollTitle(attempt + 1, maxAttempts), 1000) // Check every 1s
+            } else {
+              console.warn('[ChatPanel] Title generation timeout after 20s')
+            }
           } catch (error) {
             console.error('[ChatPanel] Failed to sync project title:', error)
           }
-        }, 2000) // Wait 2s for Mastra to generate title
+        }
+
+        // Start polling after a brief delay
+        setTimeout(() => pollTitle(), 1000)
       }
     } catch (error) {
       console.error('[ChatPanel] Failed to send initial prompt:', error)
