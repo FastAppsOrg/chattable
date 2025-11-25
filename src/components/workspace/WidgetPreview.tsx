@@ -348,6 +348,34 @@ export function WidgetPreview({ uri, toolName, projectId, mockData = {}, toolOut
           </div>
         )}
 
+        {/* Missing Tool Output Nudge */}
+        {!hasToolError && (!toolOutput || Object.keys(toolOutput).length === 0) && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '12px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 999,
+              padding: '8px 16px',
+              backgroundColor: 'var(--color-bg-secondary)',
+              color: 'var(--color-text-secondary)',
+              borderRadius: '20px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              fontSize: '13px',
+              fontWeight: 500,
+              border: '1px solid var(--color-border-subtle)',
+              pointerEvents: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>💡</span>
+            <span>Add example JSON to see preview</span>
+          </div>
+        )}
+
         {/* iframe container or tool error display */}
         <div
           style={{
