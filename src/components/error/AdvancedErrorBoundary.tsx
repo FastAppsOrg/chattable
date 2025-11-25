@@ -53,7 +53,7 @@ export class AdvancedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     return {
       hasError: true,
       error,
-      errorCount: (prev?: ErrorBoundaryState) => (prev?.errorCount || 0) + 1,
+      errorCount: 0, // Will be incremented in componentDidCatch
     }
   }
 
@@ -67,13 +67,14 @@ export class AdvancedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
     // Update error history
     this.setState((prev) => ({
+      errorCount: prev.errorCount + 1,
       errorInfo,
       errorHistory: [
         ...prev.errorHistory,
         {
           error,
           timestamp: new Date(),
-          componentStack: errorInfo.componentStack,
+          componentStack: errorInfo.componentStack || undefined,
         },
       ].slice(-10), // Keep last 10 errors
     }))

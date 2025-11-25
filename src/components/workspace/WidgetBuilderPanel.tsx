@@ -26,9 +26,15 @@ export function WidgetBuilderPanel({ project, isActive, mode }: WidgetBuilderPan
   const [loadingWidget, setLoadingWidget] = useState(false)
   const [widgetError, setWidgetError] = useState<string | null>(null)
 
-  // Fetch MCP tools and resources when panel becomes active or mode changes
+  // Fetch MCP tools and resources when panel becomes active, mode changes, or project becomes ready
   useEffect(() => {
     if (!isActive || !project?.project_id) return
+
+    // Only fetch when project is active (MCP server should be ready)
+    if (project.status !== 'active') {
+      console.log('[WidgetBuilderPanel] Waiting for project to become active, current status:', project.status)
+      return
+    }
 
     // Capture project_id at the start to avoid race conditions
     const projectId = project.project_id
@@ -70,6 +76,7 @@ export function WidgetBuilderPanel({ project, isActive, mode }: WidgetBuilderPan
 
         setTools(toolsResponse.tools || [])
         setResources(resourcesResponse.resources || [])
+        console.log('[WidgetBuilderPanel] Fetched tools:', toolsResponse.tools?.length || 0)
       } catch (err) {
         console.error('Failed to fetch MCP data:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch data')
@@ -79,7 +86,7 @@ export function WidgetBuilderPanel({ project, isActive, mode }: WidgetBuilderPan
     }
 
     fetchData()
-  }, [project.project_id, isActive, mode])
+  }, [project.project_id, project.status, isActive, mode])
 
   // Load widget HTML when tool with widget is selected
   useEffect(() => {

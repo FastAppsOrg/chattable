@@ -8,7 +8,7 @@ describe('PreviewModeSelector', () => {
     const handleModeChange = vi.fn()
 
     render(
-      <PreviewModeSelector currentMode="preview" onModeChange={handleModeChange} />
+      <PreviewModeSelector currentMode="sandbox" onModeChange={handleModeChange} />
     )
 
     expect(screen.getByText('Preview')).toBeInTheDocument()
@@ -19,7 +19,7 @@ describe('PreviewModeSelector', () => {
     const user = userEvent.setup()
 
     render(
-      <PreviewModeSelector currentMode="preview" onModeChange={handleModeChange} />
+      <PreviewModeSelector currentMode="sandbox" onModeChange={handleModeChange} />
     )
 
     // Click to open dropdown
@@ -36,7 +36,7 @@ describe('PreviewModeSelector', () => {
     const user = userEvent.setup()
 
     render(
-      <PreviewModeSelector currentMode="agent-builder" onModeChange={handleModeChange} />
+      <PreviewModeSelector currentMode="sandbox" onModeChange={handleModeChange} />
     )
 
     // Open dropdown
@@ -54,7 +54,7 @@ describe('PreviewModeSelector', () => {
     const user = userEvent.setup()
 
     render(
-      <PreviewModeSelector currentMode="preview" onModeChange={handleModeChange} />
+      <PreviewModeSelector currentMode="sandbox" onModeChange={handleModeChange} />
     )
 
     // Open dropdown
@@ -70,7 +70,7 @@ describe('PreviewModeSelector', () => {
     const user = userEvent.setup()
 
     render(
-      <PreviewModeSelector currentMode="preview" onModeChange={handleModeChange} />
+      <PreviewModeSelector currentMode="sandbox" onModeChange={handleModeChange} />
     )
 
     // Open dropdown
@@ -90,13 +90,13 @@ describe('PreviewModeSelector', () => {
 
     const { container } = render(
       <div>
-        <PreviewModeSelector currentMode="preview" onModeChange={handleModeChange} />
+        <PreviewModeSelector currentMode="sandbox" onModeChange={handleModeChange} />
         <div data-testid="outside">Outside element</div>
       </div>
     )
 
     // Open dropdown
-    await user.click(screen.getByText('Preview'))
+    await user.click(screen.getByText('Sandbox'))
 
     // Verify dropdown is open
     expect(screen.getByText('Agent Builder')).toBeInTheDocument()
@@ -113,7 +113,7 @@ describe('PreviewModeSelector', () => {
     const user = userEvent.setup()
 
     render(
-      <PreviewModeSelector currentMode="preview" onModeChange={handleModeChange} />
+      <PreviewModeSelector currentMode="sandbox" onModeChange={handleModeChange} />
     )
 
     // Open dropdown
@@ -128,7 +128,7 @@ describe('PreviewModeSelector', () => {
 
     render(
       <PreviewModeSelector
-        currentMode="preview"
+        currentMode="sandbox"
         onModeChange={handleModeChange}
         disabled={true}
       />

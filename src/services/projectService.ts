@@ -95,14 +95,15 @@ class ProjectService {
   // Branch methods removed - branches feature no longer needed
 
   async syncProject(projectId: string): Promise<ProjectSyncStatus> {
-    const response = await apiClient.post(API_ENDPOINTS.projectSync(projectId))
+    // const response = await apiClient.post(API_ENDPOINTS.projectSync(projectId))
+    throw new Error('Sync not implemented')
 
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Failed to sync project: ${error}`)
-    }
+    // if (!response.ok) {
+    //   const error = await response.text()
+    //   throw new Error(error || 'Failed to sync project')
+    // }
 
-    return response.json()
+    // return await response.json()
   }
 }
 

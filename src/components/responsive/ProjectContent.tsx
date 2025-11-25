@@ -9,12 +9,13 @@ import { ProjectNavbarRight } from '../workspace/ProjectNavbarRight'
 import { GitPanel } from '../workspace/GitPanel'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { ResponsiveProjectContent } from '../responsive/ResponsiveProjectContent'
+import { DeploymentProgress } from '../project/DeploymentProgress'
 import { useNavigate } from 'react-router-dom'
 import { useGitCommits } from '../../hooks/useGitCommits'
 import type { Project } from '../../types/project'
-import type { InspectorSelectionData } from '../../types'
+// import type { InspectorSelectionData } from '../../types'
 import { ProjectService } from '../../services/api/project'
-import type { EmbeddedBrowserHandle } from '../preview/EmbeddedBrowser'
+// import type { EmbeddedBrowserHandle } from '../preview/EmbeddedBrowser'
 import type { PreviewMode } from '../workspace/PreviewModeSelector'
 
 interface ProjectContentProps {
@@ -36,7 +37,7 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
   const [previewMode, setPreviewMode] = useState<PreviewMode>('gallery')
 
   const previewPanelRef = useRef<ImperativePanelHandle>(null)
-  const browserRef = useRef<EmbeddedBrowserHandle>(null)
+  // const browserRef = useRef<EmbeddedBrowserHandle>(null)
   const [viewportWidth, setViewportWidth] = useState(0)
   const [viewportHeight, setViewportHeight] = useState(0)
   const [leftPanelSize, setLeftPanelSize] = useState(30) // Track left panel size for navbar alignment
@@ -57,52 +58,128 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
     }
   }, [hasCommits, previewCollapsed])
 
+  // Extract primitive values to avoid re-running effect when project object reference changes
+  const projectId = project?.project_id
+  const projectStatus = project?.status
+
+  // Track if we've already started polling for this project
+  const pollingRef = useRef<string | null>(null)
+
+  // Store onProjectUpdate in a ref to avoid effect re-runs when it changes
+  const onProjectUpdateRef = useRef(onProjectUpdate)
+
+  useEffect(() => {
+    onProjectUpdateRef.current = onProjectUpdate
+  }, [onProjectUpdate])
+
   // Poll for project readiness if status is initializing
   useEffect(() => {
-    if (!project || project.status !== 'initializing') {
+    // Early exit if no project or not initializing
+    if (!projectId || projectStatus !== 'initializing') {
       setIsInitializing(false)
       return
     }
 
+    // Create a unique key for this polling session
+    const pollingKey = `${projectId}-initializing`
+
+    // If we're already polling this exact project, don't start again
+    if (pollingRef.current === pollingKey) {
+      console.log('[DEBUG_BOMB] [ProjectContent] Already polling, skipping duplicate', pollingKey)
+      return
+    }
+
+    pollingRef.current = pollingKey
     setIsInitializing(true)
-    console.log('Project is initializing, polling for readiness...')
+    console.log('[DEBUG_BOMB] [ProjectContent] Starting polling for:', projectId)
 
     let cancelled = false
+    const startedPolling = Date.now()
 
     // Start polling in background
-    ProjectService.waitForProjectReady(project.project_id, {
+    ProjectService.waitForProjectReady(projectId, {
       maxAttempts: 30,
-      pollInterval: 10000, // 10 seconds - reduced polling frequency
+      pollInterval: 10000, // 10 seconds
       onProgress: (status, attempt) => {
         if (cancelled) return
-        console.log(`Sandbox status: ${status} (attempt ${attempt}/30)`)
+        console.log(`[ProjectContent] Polling status: ${status} (${attempt}/30)`)
       },
     })
       .then((readyProject) => {
         if (cancelled) return
-        console.log('Sandbox ready!')
+        const elapsed = ((Date.now() - startedPolling) / 1000).toFixed(1)
+        console.log(`[ProjectContent] Project ready after ${elapsed}s!`)
         setIsInitializing(false)
-        // Trigger project update to refresh with ephemeral_url
-        if (onProjectUpdate) {
-          onProjectUpdate()
+        pollingRef.current = null
+        // Trigger ONE project update to refresh with ephemeral_url
+        if (onProjectUpdateRef.current) {
+          onProjectUpdateRef.current()
         }
       })
       .catch((error) => {
         if (cancelled) return
-        console.error('Failed to wait for project readiness:', error)
+        console.error('[ProjectContent] Polling failed:', error)
         setIsInitializing(false)
-        // Trigger project update even on error to refresh status
-        if (onProjectUpdate) {
-          onProjectUpdate()
+        pollingRef.current = null
+        // Still update to refresh status
+        if (onProjectUpdateRef.current) {
+          onProjectUpdateRef.current()
         }
       })
 
-    // Cleanup: mark as cancelled when component unmounts or project changes
+    // Cleanup: mark as cancelled when component unmounts or dependencies change
+    return () => {
+      if (!cancelled) {
+        cancelled = true
+        console.log('[ProjectContent] Polling cleanup for:', projectId)
+        pollingRef.current = null
+      }
+    }
+  }, [projectId, projectStatus]) // Removed onProjectUpdate from dependencies
+
+  // Ensure dev server is running when entering project (for active projects)
+  // This handles the case where server was restarted and dev processes were lost
+  useEffect(() => {
+    // Only run for active projects (not initializing)
+    if (!projectId || projectStatus !== 'active') {
+      return
+    }
+
+    // Create unique key to prevent duplicate calls
+    const ensureKey = `${projectId}-ensure-running`
+    if (pollingRef.current === ensureKey) {
+      return
+    }
+
+    let cancelled = false
+    pollingRef.current = ensureKey
+
+    console.log('[ProjectContent] Checking if dev server is running for:', projectId)
+
+    ProjectService.ensureDevServerRunning(projectId)
+      .then((result) => {
+        if (cancelled) return
+        pollingRef.current = null
+
+        console.log('[ProjectContent] Dev server status:', result.status, result.message)
+
+        // If dev server was restarted, refresh project data to get new URLs
+        if (result.restarted && onProjectUpdateRef.current) {
+          console.log('[ProjectContent] Dev server was restarted, refreshing project data')
+          onProjectUpdateRef.current()
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return
+        pollingRef.current = null
+        console.error('[ProjectContent] Failed to ensure dev server running:', error)
+      })
+
     return () => {
       cancelled = true
-      setIsInitializing(false)
+      pollingRef.current = null
     }
-  }, [project?.project_id, project?.status])
+  }, [projectId, projectStatus])
 
   const handlePreviewConnect = () => {
     setPreviewCollapsed(false)
@@ -131,11 +208,11 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
 
   // Browser control handlers
   const handleRefresh = useCallback(() => {
-    browserRef.current?.refresh()
+    // browserRef.current?.refresh()
   }, [])
 
   const handleOpenExternal = useCallback(() => {
-    browserRef.current?.openExternal()
+    // browserRef.current?.openExternal()
   }, [])
 
   const handleToggleChatFloating = useCallback(() => {
@@ -224,6 +301,39 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                 className={`preview-panel ${previewCollapsed ? 'collapsed' : ''}`}
               >
                 <div style={{ position: 'relative', height: '100%' }}>
+                  {/* Progress overlay - shows during initialization */}
+                  {isInitializing && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: 'var(--color-bg-overlay)',
+                      backdropFilter: 'blur(8px)',
+                      zIndex: 1001,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      animation: 'fadeIn 0.3s ease-in',
+                    }}>
+                      <DeploymentProgress
+                        projectId={project.project_id}
+                        onComplete={() => {
+                          console.log('Deployment complete!')
+                          setIsInitializing(false)
+                          if (onProjectUpdate) {
+                            onProjectUpdate()
+                          }
+                        }}
+                        onError={(error) => {
+                          console.error('Deployment error:', error)
+                          setIsInitializing(false)
+                        }}
+                      />
+                    </div>
+                  )}
+
                   {/* Git Panel Overlay */}
                   <GitPanel
                     project={project}
@@ -254,9 +364,10 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                 width: '400px',
                 height: '600px',
                 maxHeight: 'calc(100vh - 100px)',
-                backgroundColor: '#1a1a1a',
-                borderRadius: '12px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                backgroundColor: 'var(--color-bg-elevated)',
+                borderRadius: 'var(--radius-xl)',
+                boxShadow: 'var(--shadow-xl)',
+                border: '1px solid var(--color-border-default)',
                 zIndex: 1000,
                 display: 'flex',
                 flexDirection: 'column',
@@ -271,13 +382,18 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '12px 16px',
-                  borderBottom: '1px solid #333',
-                  backgroundColor: '#1a1a1a',
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
+                  borderBottom: '1px solid var(--color-border-default)',
+                  backgroundColor: 'var(--color-bg-elevated)',
                   cursor: isDragging ? 'grabbing' : 'grab',
                 }}
               >
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#f0f0f0', pointerEvents: 'none' }}>
+                <span style={{ 
+                  fontSize: 'var(--font-size-sm)', 
+                  fontWeight: 'var(--font-weight-medium)', 
+                  color: 'var(--color-text-primary)', 
+                  pointerEvents: 'none' 
+                }}>
                   Chat
                 </span>
                 <button
@@ -291,14 +407,14 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#888',
-                    transition: 'color 0.2s',
+                    color: 'var(--color-icon-tertiary)',
+                    transition: 'color var(--duration-fast)',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.color = '#f0f0f0'
+                    e.currentTarget.style.color = 'var(--color-icon-primary)'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.color = '#888'
+                    e.currentTarget.style.color = 'var(--color-icon-tertiary)'
                   }}
                   title="Dock Chat Panel"
                 >
@@ -375,20 +491,20 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                 <div className="chat-section" style={{ height: '100%' }}>
                   <ErrorBoundary>
                     <ChatPanel
-                    key={`chat-${project?.project_id}-docked`}
-                    projectId={project?.project_id}
-                    projectName={project.name}
-                    onBack={handleBack}
-                    externalInput={selectedElementInput}
-                    onExternalInputConsumed={() => setSelectedElementInput('')}
-                    selectedElements={selectedElements}
-                    onRemoveElement={(index) => {
-                      setSelectedElements((prev) => prev.filter((_, i) => i !== index))
-                    }}
-                    sandboxReady={project?.status === 'active' && !!project?.ephemeral_url}
-                    onClearElements={() => setSelectedElements([])}
-                  />
-                </ErrorBoundary>
+                      key={`chat-${project?.project_id}-docked`}
+                      projectId={project?.project_id}
+                      projectName={project.name}
+                      onBack={handleBack}
+                      externalInput={selectedElementInput}
+                      onExternalInputConsumed={() => setSelectedElementInput('')}
+                      selectedElements={selectedElements}
+                      onRemoveElement={(index) => {
+                        setSelectedElements((prev) => prev.filter((_, i) => i !== index))
+                      }}
+                      sandboxReady={project?.status === 'active' && !!project?.ephemeral_url}
+                      onClearElements={() => setSelectedElements([])}
+                    />
+                  </ErrorBoundary>
                 </div>
               </Panel>
 
@@ -403,6 +519,39 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                     className={`preview-panel ${previewCollapsed ? 'collapsed' : ''}`}
                   >
                     <div style={{ position: 'relative', height: '100%' }}>
+                      {/* Progress overlay - shows during initialization */}
+                      {isInitializing && (
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundColor: 'var(--color-bg-overlay)',
+                          backdropFilter: 'blur(8px)',
+                          zIndex: 1001,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          animation: 'fadeIn 0.3s ease-in',
+                        }}>
+                          <DeploymentProgress
+                            projectId={project.project_id}
+                            onComplete={() => {
+                              console.log('Deployment complete!')
+                              setIsInitializing(false)
+                              if (onProjectUpdate) {
+                                onProjectUpdate()
+                              }
+                            }}
+                            onError={(error) => {
+                              console.error('Deployment error:', error)
+                              setIsInitializing(false)
+                            }}
+                          />
+                        </div>
+                      )}
+
                       {/* Git Panel Overlay */}
                       <GitPanel
                         project={project}
@@ -435,7 +584,7 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
-        color: '#666',
+        color: 'var(--color-text-tertiary)',
       }}
     >
       <div>No project selected</div>
@@ -448,7 +597,7 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
       selectedElementInput={selectedElementInput}
       selectedElements={selectedElements}
       onBack={handleBack}
-      onElementSelected={() => {}}
+      onElementSelected={() => { }}
       onExternalInputConsumed={() => setSelectedElementInput('')}
       onRemoveElement={(index) => {
         setSelectedElements((prev) => prev.filter((_, i) => i !== index))

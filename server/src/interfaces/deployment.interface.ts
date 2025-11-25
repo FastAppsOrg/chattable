@@ -1,8 +1,7 @@
 /**
  * Deployment Service Interface
  *
- * Abstraction layer for different deployment providers (Freestyle, Fly.io, Local, etc.)
- * This allows easy switching between providers without changing business logic.
+ * Interface for local project deployment and management.
  */
 
 /**
@@ -10,7 +9,7 @@
  * This is what Mastra needs to connect to the project's filesystem
  */
 export interface McpConnectionInfo {
-  /** MCP endpoint URL (e.g., http://localhost:8080/sse or https://app.fly.dev:8080/sse) */
+  /** MCP endpoint URL (e.g., http://localhost:8080/mcp) */
   url: string;
 
   /** Transport protocol */
@@ -51,6 +50,8 @@ export interface CreateProjectOptions {
   templateUrl?: string;
   gitUrl?: string;
   gitBranch?: string;
+  /** Database project UUID for progress tracking */
+  dbProjectId?: string;
 }
 
 export interface IDeploymentService {
@@ -77,6 +78,9 @@ export interface IDeploymentService {
   /**
    * Restart a project (for recovery after server restart)
    * Optional - only needed for adapters that support process recovery
+   * @param projectId - The project UUID (used as folder name)
+   * @param options - Optional restart options
+   * @param options.savedPort - Port from DB to reuse (avoids port changes on restart)
    */
-  restartProject?(projectId: string): Promise<DeploymentProject>;
+  restartProject?(projectId: string, options?: { savedPort?: number }): Promise<DeploymentProject>;
 }

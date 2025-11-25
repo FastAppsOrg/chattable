@@ -1,10 +1,11 @@
 import { spawn, ChildProcess } from 'child_process';
 import { promisify } from 'util';
 import { exec as execCallback } from 'child_process';
-import { mkdir, rm } from 'fs/promises';
+import { mkdir, rm, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { createServer } from 'net';
+import { EventEmitter } from 'events';
 import {
   IDeploymentService,
   DeploymentProject,
@@ -25,33 +26,128 @@ const execAsync = promisify(execCallback);
  * - Direct filesystem access
  * - Works offline
  */
+export interface ProgressEvent {
+  projectId: string;
+  step: 'start' | 'clone' | 'install' | 'dev-server' | 'complete' | 'error';
+  message: string;
+  progress?: number; // 0-100
+}
+
 export class LocalDeploymentAdapter implements IDeploymentService {
   private projectsDir: string;
   private runningProcesses = new Map<string, ProcessInfo>();
+  public progressEmitter = new EventEmitter();
 
   constructor() {
-    this.projectsDir = path.join(os.homedir(), '.appkit-local-projects');
+    this.projectsDir = path.join(process.cwd(), '.chattable');
+  }
+
+  private emitProgress(event: ProgressEvent) {
+    console.log(`[Progress] ${event.projectId}: ${event.step} - ${event.message}`);
+    this.progressEmitter.emit('progress', event);
   }
 
   /**
    * Create a new local project
    */
   async createProject(options: CreateProjectOptions): Promise<DeploymentProject> {
-    const { userId, templateUrl, name } = options;
-    const projectId = `local-${userId}-${Date.now()}`;
+    const { userId, name, dbProjectId } = options;
+    // Use database project ID as folder name for easy tracking
+    const projectId = dbProjectId || `project-${Date.now()}`;
     const projectDir = path.join(this.projectsDir, projectId);
 
     console.log(`[Local] Creating project: ${projectId}`);
     console.log(`[Local] Project directory: ${projectDir}`);
+    console.log(`[Local] Database project ID: ${dbProjectId}`);
+
+    // Use dbProjectId for progress tracking if provided, otherwise fallback to deployment projectId
+    const progressId = dbProjectId || projectId;
 
     try {
+      // Emit start event
+      this.emitProgress({
+        projectId: progressId,
+        step: 'start',
+        message: 'Initializing project...',
+        progress: 0,
+      });
       await mkdir(projectDir, { recursive: true });
 
-      const gitUrl = templateUrl || 'https://github.com/alpic-ai/apps-sdk-template';
+      // Fixed template URL as requested
+      const gitUrl = 'https://github.com/Jhvictor4/apps-sdk-template';
       console.log(`[Local] Cloning ${gitUrl}...`);
-      await execAsync(`git clone ${gitUrl} .`, { cwd: projectDir });
+
+      // Emit clone start event
+      this.emitProgress({
+        projectId: progressId,
+        step: 'clone',
+        message: 'Cloning repository...',
+        progress: 20,
+      });
+
+      // Check if directory is empty
+      const files = await execAsync('ls -A', { cwd: projectDir }).catch(() => ({ stdout: '' }));
+      if (files.stdout.trim()) {
+        console.log(`[Local] Directory not empty, skipping clone...`);
+      } else {
+        await execAsync(`git clone ${gitUrl} .`, { cwd: projectDir });
+
+        // Patch template to use PORT environment variable and add CSP
+        console.log(`[Local] Patching template for PORT and CSP...`);
+        try {
+          const serverIndexPath = path.join(projectDir, 'server/src/index.ts');
+          let serverCode = await readFile(serverIndexPath, 'utf-8');
+
+          // Define the port variable at the top
+          const portVarDeclaration = 'const PORT = Number(process.env.PORT) || 3000;\n\n';
+
+          // Add PORT variable before app.listen (look for "app.listen" and insert before it)
+          serverCode = serverCode.replace(
+            /(app\.listen\()/,
+            portVarDeclaration + '$1'
+          );
+
+          // Replace app.listen(3000, with app.listen(PORT,
+          serverCode = serverCode.replace(
+            /app\.listen\(3000,/g,
+            'app.listen(PORT,'
+          );
+
+          // Replace hardcoded port 3000 in console.log messages
+          serverCode = serverCode.replace(
+            /port 3000/g,
+            `port \${PORT}`
+          );
+          serverCode = serverCode.replace(
+            /localhost:3000/g,
+            `localhost:\${PORT}`
+          );
+
+          // Add CSP headers - insert after express.json() middleware
+          const cspMiddleware = `\n// CSP headers for security\napp.use((req, res, next) => {\n  res.setHeader(\n    'Content-Security-Policy',\n    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'"\n  );\n  next();\n});\n\n`;
+
+          // Insert CSP middleware after app.use(express.json())
+          serverCode = serverCode.replace(
+            /(app\.use\(express\.json\(\)\))/,
+            '$1' + cspMiddleware
+          );
+
+          await writeFile(serverIndexPath, serverCode);
+          console.log(`[Local] Successfully patched template (PORT + CSP)`);
+        } catch (error: any) {
+          console.warn(`[Local] Could not patch template:`, error.message);
+        }
+      }
 
       console.log(`[Local] Installing dependencies...`);
+
+      // Emit install start event
+      this.emitProgress({
+        projectId: progressId,
+        step: 'install',
+        message: 'Installing dependencies...',
+        progress: 50,
+      });
       const hasPnpmWorkspace = await execAsync('test -f pnpm-workspace.yaml && echo "yes" || echo "no"', { cwd: projectDir })
         .then(result => result.stdout.trim() === 'yes')
         .catch(() => false);
@@ -71,9 +167,52 @@ export class LocalDeploymentAdapter implements IDeploymentService {
         await execAsync('npm install', { cwd: projectDir });
       }
 
-      const devPort = await this.findAvailablePort(3000);
+      // Patch skybridge in node_modules to respect PORT
+      // This is a workaround for the hardcoded localhost:3000 in skybridge
+      try {
+        console.log(`[Local] Patching skybridge in node_modules...`);
+
+        // Determine where node_modules is (root or server/)
+        let skybridgePath = path.join(projectDir, 'node_modules/skybridge/dist/src/server/server.js');
+
+        // Check if file exists, if not check server/node_modules (monorepo case)
+        try {
+          await readFile(skybridgePath);
+        } catch {
+          skybridgePath = path.join(projectDir, 'server/node_modules/skybridge/dist/src/server/server.js');
+        }
+
+        let skybridgeCode = await readFile(skybridgePath, 'utf-8');
+
+        // Replace hardcoded localhost:3000 with dynamic port
+        // Original: : `http://localhost:3000`;
+        // New: : `http://localhost:${process.env.PORT || 3000}`;
+        if (skybridgeCode.includes('`http://localhost:3000`')) {
+          skybridgeCode = skybridgeCode.replace(
+            '`http://localhost:3000`',
+            '`http://localhost:${process.env.PORT || 3000}`'
+          );
+          await writeFile(skybridgePath, skybridgeCode);
+          console.log(`[Local] Successfully patched skybridge at ${skybridgePath}`);
+        } else {
+          console.log(`[Local] Skybridge already patched or pattern not found`);
+        }
+      } catch (error: any) {
+        console.warn(`[Local] Failed to patch skybridge:`, error.message);
+        // Don't fail the whole process, just warn
+      }
+
+      const devPort = await this.findAvailablePort(40000);
 
       console.log(`[Local] Dev server will run on port ${devPort}`);
+
+      // Emit dev server start event
+      this.emitProgress({
+        projectId: progressId,
+        step: 'dev-server',
+        message: 'Starting development server...',
+        progress: 80,
+      });
 
       let devCwd = projectDir;
       const hasServerDir = await execAsync('test -d server && echo "yes" || echo "no"', { cwd: projectDir })
@@ -85,7 +224,14 @@ export class LocalDeploymentAdapter implements IDeploymentService {
         console.log(`[Local] Detected monorepo, running dev server from ./server`);
       }
 
-      const devProcess = spawn(hasPnpmWorkspace ? 'pnpm' : 'npm', ['run', 'dev'], {
+      // Use sh -c to explicitly set PORT in the shell command
+      // This ensures it propagates to all child processes/scripts (like skybridge)
+      const pkgManager = hasPnpmWorkspace ? 'pnpm' : 'npm';
+      const devCommand = `PORT=${devPort} ${pkgManager} run dev`;
+
+      console.log(`[Local] Spawning dev server: ${devCommand}`);
+
+      const devProcess = spawn('sh', ['-c', devCommand], {
         cwd: devCwd,
         env: {
           ...process.env,
@@ -115,6 +261,14 @@ export class LocalDeploymentAdapter implements IDeploymentService {
 
       console.log(`[Local] Project ${projectId} created successfully`);
 
+      // Emit complete event
+      this.emitProgress({
+        projectId: progressId,
+        step: 'complete',
+        message: 'Project ready!',
+        progress: 100,
+      });
+
       return {
         projectId,
         ephemeralUrl: `http://localhost:${devPort}`,
@@ -129,11 +283,18 @@ export class LocalDeploymentAdapter implements IDeploymentService {
     } catch (error: any) {
       console.error(`[Local] Failed to create project:`, error);
 
-      try {
-        await rm(projectDir, { recursive: true, force: true });
-      } catch (cleanupError) {
-        console.error(`[Local] Cleanup failed:`, cleanupError);
-      }
+      // Emit error event
+      this.emitProgress({
+        projectId: progressId,
+        step: 'error',
+        message: `Error: ${error.message}`,
+        progress: 0,
+      });
+
+      // Only cleanup if we created the directory and it failed immediately
+      // For now, let's be safe and NOT delete potentially existing user data if it wasn't empty
+      // But since we did mkdir, we might want to cleanup if it was empty.
+      // Keeping it simple: don't auto-delete for now to avoid accidents in local mode.
 
       throw new Error(`Failed to create local project: ${error.message}`);
     }
@@ -163,12 +324,16 @@ export class LocalDeploymentAdapter implements IDeploymentService {
 
   /**
    * Restart a project's processes
+   * @param projectId - The project UUID (used as folder name)
+   * @param options - Optional restart options
+   * @param options.savedPort - Port from DB to reuse (avoids port changes on restart)
    */
-  async restartProject(projectId: string): Promise<DeploymentProject> {
+  async restartProject(projectId: string, options?: { savedPort?: number }): Promise<DeploymentProject> {
     const projectDir = path.join(this.projectsDir, projectId);
 
     console.log(`[Local] Restarting project: ${projectId}`);
     console.log(`[Local] Project directory: ${projectDir}`);
+    console.log(`[Local] Saved port from DB: ${options?.savedPort}`);
 
     try {
       await execAsync('test -d .', { cwd: projectDir });
@@ -180,7 +345,21 @@ export class LocalDeploymentAdapter implements IDeploymentService {
       .then(result => result.stdout.trim() === 'yes')
       .catch(() => false);
 
-    const devPort = await this.findAvailablePort(3000);
+    // Use saved port from DB if available, otherwise find a new available port
+    let devPort: number;
+    if (options?.savedPort) {
+      // Check if saved port is available
+      const isAvailable = await this.isPortAvailable(options.savedPort);
+      if (isAvailable) {
+        devPort = options.savedPort;
+        console.log(`[Local] Reusing saved port ${devPort}`);
+      } else {
+        console.log(`[Local] Saved port ${options.savedPort} is in use, finding new port...`);
+        devPort = await this.findAvailablePort(40000);
+      }
+    } else {
+      devPort = await this.findAvailablePort(40000);
+    }
 
     console.log(`[Local] Dev server will run on port ${devPort}`);
 
@@ -222,10 +401,20 @@ export class LocalDeploymentAdapter implements IDeploymentService {
       projectDir,
     });
 
+    // Wait for server to be actually ready before returning
+    console.log(`[Local] Waiting for dev server to be ready on port ${devPort}...`);
+    const isReady = await this.waitForServerReady(devPort, 30000); // 30 second timeout
+
+    if (!isReady) {
+      console.warn(`[Local] Dev server may not be fully ready yet, but process is running`);
+    } else {
+      console.log(`[Local] Dev server is ready on port ${devPort}`);
+    }
+
     console.log(`[Local] Project ${projectId} restarted successfully`);
 
     return {
-      projectId,
+      projectId: projectId,
       ephemeralUrl: `http://localhost:${devPort}`,
       mcp: {
         url: `http://localhost:${devPort}/mcp`,
@@ -235,6 +424,33 @@ export class LocalDeploymentAdapter implements IDeploymentService {
       status: 'active',
       localPath: projectDir,
     };
+  }
+
+  /**
+   * Wait for server to be ready by polling the health endpoint
+   */
+  private async waitForServerReady(port: number, timeoutMs: number = 30000): Promise<boolean> {
+    const startTime = Date.now();
+    const pollInterval = 500; // Check every 500ms
+
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        const response = await fetch(`http://localhost:${port}/mcp`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(2000), // 2 second timeout per request
+        });
+        // Any response (even error) means server is listening
+        if (response.status) {
+          return true;
+        }
+      } catch (error: any) {
+        // Connection refused means server not ready yet, keep polling
+        // Other errors might also indicate not ready
+      }
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    return false;
   }
 
   /**

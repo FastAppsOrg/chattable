@@ -1,60 +1,258 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import { ImageIcon } from 'lucide-react'
+import { Loader2, Check, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react'
 import type { ChatMessageProps } from '../../types/chat'
 import { getToolIcon } from '../../utils/formatters'
 import { useTheme } from '../../hooks/useTheme'
 
-export const ChatMessage = memo(function ChatMessage({ message, onApplyPrompt, isPending, isThinking }: ChatMessageProps) {
-  const { theme } = useTheme()
-  if (message.messageType === 'tool_use' && message.toolInfo) {
-    const toolIcon = getToolIcon(message.toolInfo.name)
-    // console.log('message', message)
+// Helper to format JSON with syntax highlighting hints
+function formatJsonDisplay(data: any, maxLines = 20): string {
+  if (data === null || data === undefined) return 'null'
+  if (typeof data === 'string') return data
+  try {
+    const formatted = JSON.stringify(data, null, 2)
+    const lines = formatted.split('\n')
+    if (lines.length > maxLines) {
+      return lines.slice(0, maxLines).join('\n') + `\n... (${lines.length - maxLines} more lines)`
+    }
+    return formatted
+  } catch {
+    return String(data)
+  }
+}
 
-    // Special handling for TodoWrite tool
-    if (message.toolInfo.name === 'TodoWrite' && message.toolInfo.input?.todos) {
-      const todos = message.toolInfo.input.todos
-      const todoMarkdown = todos
-        .map((todo: any) => {
-          const checkbox = todo.status === 'completed' ? '[x]' : '[ ]'
-          const text = todo.status === 'in_progress' ? todo.activeForm : todo.content
-          const statusEmoji = todo.status === 'in_progress' ? ' 🔄' : ''
-          return `- ${checkbox} ${text}${statusEmoji}`
-        })
-        .join('\n')
+// Get a brief summary for tool header
+function getToolSummary(toolName: string, args: any): string {
+  if (!args) return ''
 
-      return (
-        <div className="message tool">
-          <div className="tool-icon">{toolIcon}</div>
-          <div className="tool-content">
-            <div className="tool-name">{message.toolInfo.name}</div>
-            <div className="tool-input">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{todoMarkdown}</ReactMarkdown>
-            </div>
+  switch (toolName) {
+    case 'Bash':
+      return args.command?.substring(0, 60) + (args.command?.length > 60 ? '...' : '') || ''
+    case 'Read':
+    case 'Write':
+    case 'Edit':
+      return args.file_path?.split('/').pop() || args.file_path || ''
+    case 'Grep':
+      return `"${args.pattern}" ${args.path ? `in ${args.path.split('/').pop()}` : ''}`
+    case 'Glob':
+      return args.pattern || ''
+    case 'WebFetch':
+    case 'WebSearch':
+      return args.url || args.query || ''
+    case 'TodoWrite':
+      const count = args.todos?.length || 0
+      return `${count} task${count !== 1 ? 's' : ''}`
+    default:
+      if (args.description) return args.description
+      return ''
+  }
+}
+
+// Expandable section component (accordion style)
+function ExpandableSection({
+  title,
+  content,
+  defaultExpanded = false,
+  variant = 'default'
+}: {
+  title: string
+  content: string
+  defaultExpanded?: boolean
+  variant?: 'input' | 'output' | 'default'
+}) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+
+  if (!content) return null
+
+  const variantClass = variant === 'input' ? 'input' : variant === 'output' ? 'output' : ''
+
+  return (
+    <div className={`tool-expandable-section ${variantClass}`}>
+      <button
+        className="tool-expandable-header"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        <span className="tool-expandable-title">{title}</span>
+        {!isExpanded && (
+          <span className="tool-expandable-preview">
+            {content.substring(0, 50)}{content.length > 50 ? '...' : ''}
+          </span>
+        )}
+      </button>
+      {isExpanded && (
+        <div className="tool-expandable-content">
+          <pre><code>{content}</code></pre>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Helper to render a single tool invocation
+function ToolInvocationDisplay({ tool }: { tool: { toolName: string; args: any; state: string; result?: any } }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const toolIcon = getToolIcon(tool.toolName)
+  const isRunning = tool.state !== 'result'
+  const hasResult = tool.state === 'result' && tool.result !== undefined
+  const summary = getToolSummary(tool.toolName, tool.args)
+
+  // Special handling for TodoWrite tool - always show expanded
+  if (tool.toolName === 'TodoWrite' && tool.args?.todos) {
+    const todos = tool.args.todos
+    const todoMarkdown = todos
+      .map((todo: any) => {
+        const checkbox = todo.status === 'completed' ? '[x]' : '[ ]'
+        const text = todo.status === 'in_progress' ? todo.activeForm : todo.content
+        const statusEmoji = todo.status === 'in_progress' ? ' 🔄' : ''
+        return `- ${checkbox} ${text}${statusEmoji}`
+      })
+      .join('\n')
+
+    return (
+      <div className={`tool-invocation ${isRunning ? 'running' : 'completed'}`}>
+        <div className="tool-main-header">
+          <span className="tool-icon">{toolIcon}</span>
+          <span className="tool-name">{tool.toolName}</span>
+          {isRunning && <Loader2 className="tool-spinner" size={12} />}
+          {!isRunning && <Check className="tool-check" size={12} />}
+        </div>
+        <div className="tool-body">
+          <div className="tool-todo-list">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{todoMarkdown}</ReactMarkdown>
           </div>
         </div>
-      )
-    }
+      </div>
+    )
+  }
 
-    // Extract relevant input information based on tool type
+  // Format input and output
+  const inputFormatted = tool.args ? formatJsonDisplay(tool.args) : null
+  const outputFormatted = hasResult ? formatJsonDisplay(tool.result) : null
+
+  return (
+    <div className={`tool-invocation ${isRunning ? 'running' : 'completed'} ${isExpanded ? 'expanded' : ''}`}>
+      {/* Main clickable header */}
+      <button
+        className="tool-main-header"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <span className="tool-icon">{toolIcon}</span>
+        <span className="tool-name">{tool.toolName}</span>
+        {summary && <span className="tool-summary">{summary}</span>}
+        <span className="tool-header-right">
+          {isRunning && <Loader2 className="tool-spinner" size={12} />}
+          {!isRunning && <Check className="tool-check" size={12} />}
+          <span className="tool-expand-icon">
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </span>
+        </span>
+      </button>
+
+      {/* Expandable body with input/output */}
+      {isExpanded && (
+        <div className="tool-body">
+          {inputFormatted && (
+            <ExpandableSection
+              title="Input"
+              content={inputFormatted}
+              defaultExpanded={true}
+              variant="input"
+            />
+          )}
+          {hasResult && outputFormatted && (
+            <ExpandableSection
+              title="Output"
+              content={outputFormatted}
+              defaultExpanded={true}
+              variant="output"
+            />
+          )}
+          {isRunning && (
+            <div className="tool-running-indicator">
+              <Loader2 className="tool-spinner" size={14} />
+              <span>Running...</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Collapsible thinking section component
+function ThinkingSection({ content, isStreaming = false }: { content: string; isStreaming?: boolean }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const isLong = content.length > 300
+  const displayContent = isLong && !isExpanded
+    ? content.substring(0, 300) + '...'
+    : content
+
+  return (
+    <div className={`message-reasoning ${isStreaming ? 'streaming' : ''}`}>
+      <button
+        className="reasoning-header"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <span className="reasoning-icon">
+          {isStreaming ? <Loader2 className="reasoning-spinner" size={14} /> : '💭'}
+        </span>
+        <span>{isStreaming ? 'Thinking...' : 'Thinking'}</span>
+        {isLong && !isStreaming && (
+          <span className="reasoning-toggle">
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </span>
+        )}
+      </button>
+      <div className={`reasoning-content ${isExpanded ? 'expanded' : ''}`}>
+        {displayContent}
+      </div>
+      {isLong && !isExpanded && !isStreaming && (
+        <button
+          className="reasoning-expand-btn"
+          onClick={() => setIsExpanded(true)}
+        >
+          Show more
+        </button>
+      )}
+    </div>
+  )
+}
+
+// Streaming thinking placeholder
+function StreamingThinkingIndicator() {
+  return (
+    <div className="message-reasoning streaming">
+      <div className="reasoning-header">
+        <span className="reasoning-icon">
+          <Loader2 className="reasoning-spinner" size={14} />
+        </span>
+        <span>Thinking...</span>
+      </div>
+    </div>
+  )
+}
+
+export const ChatMessage = memo(function ChatMessage({ message, onApplyPrompt, isPending, isThinking }: ChatMessageProps) {
+  const { theme } = useTheme()
+
+  // Legacy single tool_use message type (backward compatibility)
+  if (message.messageType === 'tool_use' && message.legacyToolInfo) {
+    const toolIcon = getToolIcon(message.legacyToolInfo.name)
+
     let inputDisplay = ''
-    if (message.toolInfo.input) {
-      if (message.toolInfo.name === 'Bash' && message.toolInfo.input.command) {
-        inputDisplay = message.toolInfo.input.command
-      } else if (typeof message.toolInfo.input === 'string') {
-        inputDisplay = message.toolInfo.input
-      } else if (message.toolInfo.input.file_path) {
-        inputDisplay = message.toolInfo.input.file_path
-      } else if (message.toolInfo.input.path) {
-        inputDisplay = message.toolInfo.input.path
-      } else if (message.toolInfo.input.pattern) {
-        inputDisplay = message.toolInfo.input.pattern
+    if (message.legacyToolInfo.input) {
+      if (message.legacyToolInfo.name === 'Bash' && message.legacyToolInfo.input.command) {
+        inputDisplay = message.legacyToolInfo.input.command
+      } else if (typeof message.legacyToolInfo.input === 'string') {
+        inputDisplay = message.legacyToolInfo.input
+      } else if (message.legacyToolInfo.input.file_path) {
+        inputDisplay = message.legacyToolInfo.input.file_path
       } else {
-        // For other tools, try to display the most relevant field
-        inputDisplay = JSON.stringify(message.toolInfo.input, null, 2)
+        inputDisplay = JSON.stringify(message.legacyToolInfo.input, null, 2)
       }
     }
 
@@ -62,14 +260,9 @@ export const ChatMessage = memo(function ChatMessage({ message, onApplyPrompt, i
       <div className="message tool">
         <div className="tool-icon">{toolIcon}</div>
         <div className="tool-content">
-          <div className="tool-name">{message.toolInfo.name}</div>
+          <div className="tool-name">{message.legacyToolInfo.name}</div>
           {inputDisplay && (
             <div className="tool-input">
-              {message.toolInfo.input.description && (
-                <>
-                  <code>{message.toolInfo.input.description}</code> <br />
-                </>
-              )}
               <code>{inputDisplay}</code>
             </div>
           )}
@@ -126,9 +319,26 @@ export const ChatMessage = memo(function ChatMessage({ message, onApplyPrompt, i
 
   return (
     <div className={messageClass} style={{ opacity: isPending ? 0.5 : 1 }}>
+      {/* Reasoning/Thinking section - collapsible */}
+      {message.reasoning ? (
+        <ThinkingSection content={message.reasoning} isStreaming={isThinking} />
+      ) : isThinking && !message.content && !message.toolInfo?.length ? (
+        <StreamingThinkingIndicator />
+      ) : null}
+
+      {/* Tool invocations */}
+      {message.toolInfo && message.toolInfo.length > 0 && (
+        <div className="message-tools">
+          {message.toolInfo.map((tool, index) => (
+            <ToolInvocationDisplay key={`${tool.toolName}-${index}`} tool={tool} />
+          ))}
+        </div>
+      )}
+
+      {/* Main message content */}
       <div className={isThinking ? "message-content typing" : "message-content"}>
         {message.role === 'assistant' ? (
-          (!isThinking) && (
+          (!isThinking) && message.content && (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{

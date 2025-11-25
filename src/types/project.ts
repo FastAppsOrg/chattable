@@ -1,5 +1,5 @@
 /**
- * Project interface - Freestyle.sh based
+ * Project interface - Local deployment
  * Matches backend ProjectResponse DTO
  */
 export interface Project {
@@ -10,14 +10,14 @@ export interface Project {
   status: 'initializing' | 'active' | 'failed' | 'deleted'
   created_at: string
 
-  // Freestyle.sh specific fields
-  sandbox_id?: string // Freestyle repo ID
+  // Local deployment fields (deployment uses project_id as folder name)
   ephemeral_url?: string // Dev server URL
   mcp_ephemeral_url?: string // MCP server URL
 
   // Future deployment fields
   deployed_url?: string
   last_deployed_at?: string
+  default_workspace?: any
 }
 
 export interface CreateProjectForm {
@@ -37,15 +37,6 @@ export interface ProjectUpdateForm {
 export interface DeploymentConfig {
   domains: string[]
   env_vars?: Record<string, string>
-}
-
-/**
- * Deployment result
- */
-export interface DeploymentResult {
-  deployment_id: string
-  domains?: string[]
-  status: string
 }
 
 // ========== Legacy types (to be migrated) ==========

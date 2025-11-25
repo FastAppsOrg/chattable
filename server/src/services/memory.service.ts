@@ -125,19 +125,17 @@ export class MemoryService {
     try {
       const memory = await this.getMemory();
 
-      // Use Mastra Memory API recall() method
-      const result = await memory.recall({
+      // Use Mastra Memory API query() method (v0.15.x compatible)
+      const result = await memory.query({
         threadId,
-        resourceId,
-        perPage: false, // Get all messages
       });
 
-      if (!result || !result.messages) {
+      if (!result || !result.uiMessages) {
         return [];
       }
 
-      // Parse Mastra message format and convert to frontend format
-      const messages = result.messages.map((msg: any) => {
+      // Parse Mastra uiMessages format and convert to frontend format
+      const messages = result.uiMessages.map((msg: any) => {
         let textContent = '';
 
         // Extract text content from message

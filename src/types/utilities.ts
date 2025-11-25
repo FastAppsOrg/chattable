@@ -1,3 +1,5 @@
+import React from 'react'
+
 /**
  * Advanced TypeScript utility types for enhanced type safety
  */
@@ -5,22 +7,22 @@
 // Make all properties in T optional recursively
 export type DeepPartial<T> = T extends object
   ? {
-      [P in keyof T]?: DeepPartial<T[P]>
-    }
+    [P in keyof T]?: DeepPartial<T[P]>
+  }
   : T
 
 // Make all properties in T readonly recursively
 export type DeepReadonly<T> = T extends object
   ? {
-      readonly [P in keyof T]: DeepReadonly<T[P]>
-    }
+    readonly [P in keyof T]: DeepReadonly<T[P]>
+  }
   : T
 
 // Make all properties in T required recursively
 export type DeepRequired<T> = T extends object
   ? {
-      [P in keyof T]-?: DeepRequired<T[P]>
-    }
+    [P in keyof T]-?: DeepRequired<T[P]>
+  }
   : T
 
 // Make all properties in T nullable
@@ -62,7 +64,7 @@ export type StrictExtract<T, K extends T> = K
 // XOR type - either A or B but not both
 export type XOR<T, U> = T | U extends object
   ? (T & { [K in Exclude<keyof U, keyof T>]?: never }) |
-    (U & { [K in Exclude<keyof T, keyof U>]?: never })
+  (U & { [K in Exclude<keyof T, keyof U>]?: never })
   : T | U
 
 // Get keys of T that extend type U
@@ -91,12 +93,12 @@ export type AsyncFn<P extends any[] = any[], R = any> = (...args: P) => Promise<
 export type Constructor<T = {}> = new (...args: any[]) => T
 
 // Get component props type
-export type ComponentProps<T extends keyof JSX.IntrinsicElements | React.ComponentType<any>> =
-  T extends keyof JSX.IntrinsicElements
-    ? JSX.IntrinsicElements[T]
-    : T extends React.ComponentType<infer P>
-    ? P
-    : never
+export type ComponentProps<T extends keyof React.JSX.IntrinsicElements | React.ComponentType<any>> =
+  T extends keyof React.JSX.IntrinsicElements
+  ? React.JSX.IntrinsicElements[T]
+  : T extends React.ComponentType<infer P>
+  ? P
+  : never
 
 // Ensure at least one property is present
 export type RequireAtLeastOne<T> = {
@@ -110,21 +112,21 @@ export type RequireOnlyOne<T> = RequireAtLeastOne<T> &
 // Path type for nested object access
 export type Path<T> = T extends object
   ? {
-      [K in keyof T]: K extends string
-        ? T[K] extends object
-          ? K | `${K}.${Path<T[K]>}`
-          : K
-        : never
-    }[keyof T]
+    [K in keyof T]: K extends string
+    ? T[K] extends object
+    ? K | `${K}.${Path<T[K]>}`
+    : K
+    : never
+  }[keyof T]
   : never
 
 // Get type at path in nested object
 export type PathValue<T, P extends Path<T>> = P extends `${infer K}.${infer Rest}`
   ? K extends keyof T
-    ? Rest extends Path<T[K]>
-      ? PathValue<T[K], Rest>
-      : never
-    : never
+  ? Rest extends Path<T[K]>
+  ? PathValue<T[K], Rest>
+  : never
+  : never
   : P extends keyof T
   ? T[P]
   : never

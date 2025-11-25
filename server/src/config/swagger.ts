@@ -6,7 +6,7 @@ const options: swaggerJsdoc.Options = {
     info: {
       title: 'AppKit Server API',
       version: '1.0.0',
-      description: 'API documentation for the AppKit server with Freestyle integration, WebSocket chat, and Mastra AI widget builder',
+      description: 'API documentation for the AppKit server with local project management, WebSocket chat, and Mastra AI widget builder',
       contact: {
         name: 'API Support',
         email: 'support@example.com',
@@ -70,13 +70,9 @@ const options: swaggerJsdoc.Options = {
               format: 'date-time',
               description: 'Project creation timestamp',
             },
-            sandbox_id: {
-              type: 'string',
-              description: 'Freestyle sandbox ID',
-            },
             ephemeral_url: {
               type: 'string',
-              description: 'Ephemeral URL for the project',
+              description: 'Local dev server URL',
             },
             mcp_ephemeral_url: {
               type: 'string',
@@ -212,10 +208,6 @@ const options: swaggerJsdoc.Options = {
       {
         name: 'Projects',
         description: 'Project management endpoints',
-      },
-      {
-        name: 'Freestyle',
-        description: 'Freestyle sandbox integration',
       },
       {
         name: 'GitHub',

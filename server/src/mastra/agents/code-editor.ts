@@ -1,6 +1,9 @@
 import { Agent } from '@mastra/core/agent'
 import { openai } from '@ai-sdk/openai'
 import type { Memory } from '@mastra/memory'
+import type { CoreMessage } from 'ai'
+import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
+import { toAISdkFormat } from '@mastra/ai-sdk'
 
 /**
  * Code Editor Agent with MCP tools and Memory
@@ -12,8 +15,11 @@ import type { Memory } from '@mastra/memory'
  * allowing it to remember context across multiple messages.
  */
 export function createCodeEditorAgent(mcpTools: any, memory: Memory) {
-  console.log('[Code Editor] Creating agent with tools:', mcpTools?.length || 0, 'tools')
-  console.log('[Code Editor] Sample tool:', mcpTools?.[0]?.name)
+  // MastraMCPClient.tools() returns Record<string, Tool>, not array
+  const toolNames = mcpTools ? Object.keys(mcpTools) : []
+  console.log('[Code Editor] Creating agent with tools:', toolNames.length, 'tools')
+  console.log('[Code Editor] Tool names:', toolNames.slice(0, 5).join(', '), toolNames.length > 5 ? '...' : '')
+  console.log('[Code Editor] Sample tool has execute:', mcpTools && toolNames[0] ? typeof mcpTools[toolNames[0]].execute === 'function' : false)
   console.log('[Code Editor] Memory enabled:', !!memory)
 
   return new Agent({
@@ -44,11 +50,69 @@ Your role is to help users build Apps in ChatGPT by editing code, adding feature
 
 /**
  * Stream chat response with code editing capabilities and memory
+ * Uses native Mastra stream + toAISdkFormat for proper tool execution
  *
  * @param agent - Mastra Agent instance with memory configured
- * @param userMessage - User's message
+ * @param messages - AI SDK format messages array
  * @param threadId - Thread ID for conversation grouping (e.g., projectId)
  * @param resourceId - Resource ID for user identification (e.g., userId)
+ * @returns Response object with AI SDK UI Message Stream
+ */
+export async function streamCodeEditingAISdk(
+  agent: Agent,
+  messages: CoreMessage[],
+  threadId: string,
+  resourceId: string,
+): Promise<Response> {
+  console.log('[Code Editor] Starting AI SDK stream (format: aisdk)')
+  console.log('[Code Editor] Messages count:', messages.length)
+  console.log('[Code Editor] Thread ID:', threadId)
+  console.log('[Code Editor] Resource ID:', resourceId)
+
+  try {
+    // Use native Mastra stream + toAISdkFormat for proper tool execution
+    // maxSteps: 10 allows multi-step tool execution
+    const result = await agent.stream(messages, {
+      maxSteps: 10,
+      memory: {
+        thread: threadId,
+        resource: resourceId,
+      },
+    })
+
+    // Get last assistant message ID for proper message continuation
+    let lastMessageId: string | undefined
+    if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
+      lastMessageId = (messages[messages.length - 1] as any).id
+    }
+
+    // Transform Mastra stream to AI SDK UI Message format
+    const uiMessageStream = createUIMessageStream({
+      execute: async ({ writer }) => {
+        for await (const part of toAISdkFormat(result, {
+          from: 'agent',
+          lastMessageId,
+          sendStart: true,
+          sendFinish: true,
+          sendReasoning: true,
+          sendSources: true,
+        })) {
+          writer.write(part)
+        }
+      },
+    })
+
+    return createUIMessageStreamResponse({ stream: uiMessageStream })
+  } catch (error: any) {
+    console.error('[Code Editor] Error during streaming:', error.message)
+    console.error('[Code Editor] Error stack:', error.stack)
+    throw error
+  }
+}
+
+/**
+ * @deprecated Use streamCodeEditingAISdk instead
+ * Legacy stream function - yields raw text chunks
  */
 export async function* streamCodeEditing(
   agent: Agent,
@@ -56,17 +120,11 @@ export async function* streamCodeEditing(
   threadId: string,
   resourceId: string,
 ) {
-  console.log('[Code Editor] Starting stream for message:', userMessage.substring(0, 50))
+  console.log('[Code Editor] [LEGACY] Starting stream for message:', userMessage.substring(0, 50))
   console.log('[Code Editor] Thread ID:', threadId)
   console.log('[Code Editor] Resource ID:', resourceId)
 
   try {
-    // Using stream() with memory context
-    // Mastra will automatically:
-    // 1. Load previous conversation history from this thread
-    // 2. Save user message to memory
-    // 3. Save assistant response to memory
-    // 4. Generate thread title if this is the first message
     const stream = await agent.stream(userMessage, {
       memory: {
         thread: threadId,
@@ -74,7 +132,6 @@ export async function* streamCodeEditing(
       },
     })
 
-    // Iterate through the text stream
     console.log('[Code Editor] Starting to iterate textStream...')
     let chunkCount = 0
 

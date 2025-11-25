@@ -24,8 +24,8 @@ export function lazyLoad<T extends ComponentType<any>>(
     })
   })
 
-  // Add preload method
-  ;(LazyComponent as any).preload = importFunc
+    // Add preload method
+    ; (LazyComponent as any).preload = importFunc
 
   const WrappedComponent = (props: any) => (
     <Suspense fallback={fallback}>
@@ -33,7 +33,7 @@ export function lazyLoad<T extends ComponentType<any>>(
     </Suspense>
   )
 
-  WrappedComponent.displayName = `LazyLoad(${LazyComponent.displayName || 'Component'})`
+  WrappedComponent.displayName = `LazyLoad(${(LazyComponent as any).displayName || 'Component'})`
 
   return WrappedComponent as T & { preload: typeof importFunc }
 }

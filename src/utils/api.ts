@@ -130,3 +130,8 @@ class ApiClient {
 }
 
 export const apiClient = ApiClient.getInstance()
+
+// Export auth token getter for AI SDK transport
+export function getAuthToken(): string {
+  return 'local-token'
+}

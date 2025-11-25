@@ -28,19 +28,19 @@ export function useGitCommits(projectId: string | undefined, enabled = true) {
         setLoading(true)
         setError(null)
 
-        const response = await apiClient.get(API_ENDPOINTS.projectGitCommits(projectId))
+        // const response = await apiClient.get(API_ENDPOINTS.projectGitCommits(projectId))
+        // const response = { data: [] } // Mock empty response
 
         if (cancelled) return
 
-        if (response.ok) {
-          const data = await response.json()
-          const commitList = data.commits || []
-          setCommits(commitList)
-          setHasCommits(commitList.length > 0)
-        } else {
-          setError('Failed to fetch commits')
-          setHasCommits(false)
-        }
+        // if (!response.ok) {
+        //   throw new Error(`Failed to fetch commits: ${response.status}`)
+        // }
+
+        // const data = await response.json()
+        const commitList = [] as any[]
+        setCommits(commitList)
+        setHasCommits(false)
       } catch (err) {
         if (!cancelled) {
           console.error('Error fetching git commits:', err)

@@ -16,6 +16,7 @@ import { useAuth } from './hooks/useAuth'
 import { useToast } from './hooks/useToast'
 import { useProject } from './hooks/useProject'
 import { SettingsModal } from './components/settings/SettingsModal'
+import { generateProjectName } from './utils/nameGenerator'
 
 function AppContent() {
   const navigate = useNavigate()
@@ -38,7 +39,7 @@ function AppContent() {
     clearSelection: clearProjectSelection,
   } = useProject()
 
-  const { createProject, projects: contextProjects, loading: contextLoading } = useProjectContext()
+  const { createProject, projects: contextProjects, loading: contextLoading, fetchProjects: fetchContextProjects } = useProjectContext()
 
   // Use context projects if available, otherwise use local projects
   const projects = contextProjects.length > 0 ? contextProjects : localProjects
@@ -67,9 +68,9 @@ function AppContent() {
       prompt = pendingPrompt
     }
 
-    // Create a quick start project (empty form)
+    // Create a quick start project with random name
     const form = {
-      name: '',
+      name: generateProjectName(),
       git_url: '',
       git_branch: 'main',
     }
@@ -106,7 +107,20 @@ function AppContent() {
           navigate(`/projects/${existingProjectId}`)
           return
         }
-        showError(`Failed to create project: ${error.message}`)
+
+        // Display user-friendly error messages
+        let errorMessage = error.message
+
+        // Clean up error message for display
+        if (errorMessage.includes('UNIQUE constraint failed')) {
+          errorMessage = 'A project with this name already exists. Please try again with a different name.'
+        } else if (errorMessage.includes('EADDRINUSE')) {
+          errorMessage = 'The project port is already in use. The server will retry automatically.'
+        } else if (errorMessage.includes('Network error')) {
+          errorMessage = 'Unable to connect to server. Please check your connection.'
+        }
+
+        showError(errorMessage)
       }
       // Stay on projects list on error
       setView('list')
@@ -242,7 +256,11 @@ function AppContent() {
               key={selectedProject?.project_id}
               project={selectedProject}
               onBack={handleBack}
-              onProjectUpdate={() => selectedProject && fetchProject(selectedProject.project_id)}
+              onProjectUpdate={() => {
+                console.log('[App] onProjectUpdate triggered, refreshing context projects')
+                // Refresh context projects to prevent stale state from reverting selectedProject
+                fetchContextProjects()
+              }}
               githubUsername={extractUsername(user)}
             />
           )}

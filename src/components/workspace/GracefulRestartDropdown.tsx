@@ -32,7 +32,7 @@ export function GracefulRestartDropdown({
     setError(null)
 
     try {
-      const endpoint = API_ENDPOINTS.projectGracefulRestart(projectId)
+      const endpoint = API_ENDPOINTS.projectRestart(projectId)
       console.log('Calling graceful restart endpoint:', endpoint)
 
       // Graceful restart takes 30-60s (sandbox creation), use 2min timeout

@@ -1,15 +1,5 @@
 import { createContext, useContext } from 'react'
-import { CreateProjectForm } from '../types/project'
-
-interface Project {
-  project_id: string
-  name: string
-  git_url: string
-  default_branch: string
-  status: string
-  created_at: string
-  default_workspace?: any
-}
+import { CreateProjectForm, Project } from '../types/project'
 
 interface ProjectContextType {
   projects: Project[]

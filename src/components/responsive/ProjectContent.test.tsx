@@ -82,7 +82,7 @@ const mockProject = {
   git_branch: 'main',
   git_url: 'https://github.com/test/repo',
   is_scaffold: false,
-  status: 'ready' as const,
+  status: 'active' as const,
   created_at: '2024-01-01T00:00:00Z',
   default_branch: 'main',
 }

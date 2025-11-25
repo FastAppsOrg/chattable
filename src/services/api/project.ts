@@ -3,7 +3,6 @@ import type {
   CreateProjectForm,
   ProjectUpdateForm,
   DeploymentConfig,
-  DeploymentResult,
   FileNode,
   SSHInfo,
   ProjectPreview,
@@ -58,32 +57,57 @@ export class ProjectService {
         templateUrl: form.git_url || 'https://github.com/alpic-ai/apps-sdk-template', // Default to Apps SDK template
       }
 
-      // Project creation can take 10-30 seconds (git clone + dev server startup)
-      const response = await apiClient.post(API_ENDPOINTS.projects, body, { timeout: 60000 })
+      console.log('[ProjectService] Creating project with body:', body)
+
+      // Project creation now returns immediately with status='initializing'
+      // Background deployment happens via SSE progress updates
+      const response = await apiClient.post(API_ENDPOINTS.projects, body, { timeout: 10000 })
+
+      console.log('[ProjectService] Response status:', response.status, response.statusText)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+
+        // Extract error message - support multiple formats from server
+        const errorMessage = errorData.error || errorData.message || errorData.detail || 'Unknown error'
+
         if (response.status === 400) {
-          throw new Error(errorData.detail || 'Invalid project configuration')
+          throw new Error(errorMessage || 'Invalid project configuration')
         }
         if (response.status === 403) {
-          throw new Error('Project limit reached or permission denied')
+          throw new Error(errorMessage || 'Project limit reached or permission denied')
         }
-        throw new Error(errorData.detail || `Failed to create project: ${response.status}`)
+        if (response.status === 500) {
+          throw new Error(errorMessage || 'Server error while creating project')
+        }
+        throw new Error(errorMessage || `Failed to create project: ${response.status}`)
       }
 
-      return response.json()
+      const text = await response.text()
+      console.log('[ProjectService] Response text:', text)
+
+      const project = JSON.parse(text)
+      console.log('[ProjectService] Parsed project:', project)
+
+      return project
     } catch (error) {
+      console.error('[ProjectService] Error creating project:', error)
+      console.error('[ProjectService] Error type:', error?.constructor?.name)
+      console.error('[ProjectService] Error message:', (error as any)?.message)
+      console.error('[ProjectService] Error name:', (error as any)?.name)
+
       if (error instanceof Error) {
+        console.error('[ProjectService] Rethrowing Error:', error.message, error.name)
         throw error
       }
+      console.error('[ProjectService] Non-Error thrown, wrapping')
       throw new Error('Network error: Unable to create project')
     }
   }
 
   /**
    * Wait for project sandbox to be ready
-   * Polls project status until sandbox_id is available and status is "active"
+   * Polls project status until project_id is available and status is "active"
    */
   static async waitForProjectReady(
     projectId: string,
@@ -107,7 +131,7 @@ export class ProjectService {
         }
 
         // Check if project is ready
-        if (project.status === 'active' && project.sandbox_id) {
+        if (project.status === 'active' && project.project_id) {
           return project
         }
 
@@ -135,7 +159,7 @@ export class ProjectService {
 
     throw new Error(
       'Project sandbox is still initializing. This is taking longer than expected. ' +
-        'Please refresh the page in a moment to check if it completed.',
+      'Please refresh the page in a moment to check if it completed.',
     )
   }
 
@@ -239,6 +263,33 @@ export class ProjectService {
     }
   }
 
+  /**
+   * Ensure dev server is running for a project
+   * Checks status and auto-restarts if disconnected
+   * Should be called when entering project detail page
+   */
+  static async ensureDevServerRunning(projectId: string): Promise<{
+    status: 'running' | 'initializing' | 'disconnected' | 'error' | 'no_deployment'
+    message: string
+    ephemeral_url: string | null
+    mcp_ephemeral_url: string | null
+    restarted: boolean
+  }> {
+    try {
+      const response = await apiClient.post(`/api/projects/${projectId}/ensure-running`, {})
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to ensure dev server: ${response.status}`)
+      }
+      return response.json()
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error('Network error: Unable to ensure dev server running')
+    }
+  }
+
   /** @deprecated Freestyle provides ephemeral_url directly */
   static async fetchProjectPreview(projectId: string): Promise<ProjectPreview> {
     const response = await apiClient.get(`/api/projects/${projectId}/preview`)
@@ -254,11 +305,12 @@ export class ProjectService {
     command?: string,
   ): Promise<{ status: string; message: string }> {
     const body = command ? { command } : {}
-    const response = await apiClient.post(API_ENDPOINTS.projectPreviewStart(projectId), body)
-    if (!response.ok) {
-      throw new Error(`Failed to start preview: ${response.status}`)
-    }
-    return response.json()
+    // const response = await apiClient.post(API_ENDPOINTS.projectPreviewStart(projectId), body)
+    throw new Error('Preview start not implemented')
+    // if (!response.ok) {
+    //   throw new Error(`Failed to start preview: ${response.status}`)
+    // }
+    // return await response.json()
   }
 
   /** @deprecated */
@@ -325,12 +377,14 @@ export class ProjectService {
     const params = new URLSearchParams()
     if (limit) params.append('limit', String(limit))
 
-    const url = `${API_ENDPOINTS.projectGitCommits(projectId)}?${params.toString()}`
-    const response = await apiClient.get(url)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch commits: ${response.status}`)
-    }
-    return response.json()
+    // const url = `${API_ENDPOINTS.projectGitCommits(projectId)}?${params.toString()}`
+    // const url = '' // Mock empty url
+    // const response = await apiClient.get(url)
+    // if (!response.ok) {
+    //   throw new Error(`Failed to fetch commits: ${response.status}`)
+    // }
+    // return await response.json()
+    return []
   }
 
   /** @deprecated Use Freestyle Git API */

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Monitor, ExternalLink, RotateCw, PanelLeftClose, PanelLeft, Smartphone, Tablet, GithubIcon, ChevronUp, Code2Icon, Cloud, CloudCog, Server, KanbanIcon, KanbanSquare, KanbanSquareIcon } from 'lucide-react'
 import { SandboxConnectionStatus } from './SandboxConnectionStatus'
-import { SandboxTimer } from './SandboxTimer'
+// import { SandboxTimer } from './SandboxTimer'
 import { GracefulRestartDropdown } from './GracefulRestartDropdown'
 import { PreviewModeSelector, type PreviewMode } from './PreviewModeSelector'
 import type { Project } from '../../types/project'

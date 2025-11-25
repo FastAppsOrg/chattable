@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import type { ChatPanelProps } from '../../types/chat'
-import { useChat } from '../../hooks/useChat'
+import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
+import type { UIMessage } from 'ai'
 import { useProjectContext } from '../../hooks/useProjectContext'
 import type { ChatMessage as ChatMessageType } from '../../types/chat'
 import { ChatMessage } from './ChatMessage'
 import { SelectedElementsCarousel } from './SelectedElementsCarousel'
-import { ArrowLeft, Settings, Key, FolderOpen, LogOut, ImagePlus, X, ArrowUp, SendHorizontal } from 'lucide-react'
+import { ImagePlus, X, ArrowUp } from 'lucide-react'
 import '../../styles/ChatPanel.css'
 import { useToast } from '@/hooks/useToast'
-import { apiClient } from '@/utils/api'
-import { API_ENDPOINTS } from '@/constants/api'
+import { apiClient, getAuthToken } from '@/utils/api'
+import { API_ENDPOINTS, API_BASE_URL } from '@/constants/api'
 import { compressImages, isValidImageFile } from '@/utils/imageCompression'
 import type { CompressedImage } from '@/utils/imageCompression'
 
@@ -26,35 +28,141 @@ export function ChatPanel({
   useEffect(() => {
     console.log('[ChatPanel] projectId:', projectId, 'type:', typeof projectId)
   }, [projectId])
-  const [input, setInput] = useState('')
+
+  const [inputValue, setInputValue] = useState('')
   const [textareaHeight, setTextareaHeight] = useState(80)
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [compressedImagesPreview, setCompressedImagesPreview] = useState<CompressedImage[]>([])
+  const [historyLoaded, setHistoryLoaded] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const heightDebounceTimer = useRef<NodeJS.Timeout | null>(null)
-  const isSendingRef = useRef(false)
-  const [thinkingMessageId, setThinkingMessageId] = useState<string | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const initialPromptProcessedRef = useRef(false)
-
-  // No longer need to handle externalInput - elements shown in carousel only
 
   const { showToast } = useToast()
   const { syncProjectTitle } = useProjectContext()
   const firstMessageSentRef = useRef(false)
+
+  // Memoize transport to prevent recreation on every render
+  // This fixes the excessive fetch requests issue
+  const chatTransport = useMemo(() => {
+    if (!currentProjectId) return null
+    return new DefaultChatTransport({
+      api: `${API_BASE_URL}${API_ENDPOINTS.projectChat(currentProjectId)}`,
+      headers: async () => {
+        const token = getAuthToken()
+        return token ? { Authorization: `Bearer ${token}` } : {}
+      },
+    })
+  }, [currentProjectId])
+
+  // AI SDK useChat hook with memoized DefaultChatTransport
   const {
     messages,
-    loading,
-    historyLoaded,
-    messagesEndRef,
-    addMessage,
-    removeMessage,
-    setLoading,
-    // setError - not used in this implementation
-  } = useChat(currentProjectId!)
+    status,
+    error,
+    sendMessage,
+    setMessages,
+    stop,
+  } = useChat({
+    transport: chatTransport!,
+    onResponse: (response) => {
+      console.log('[ChatPanel] Stream response:', response.status)
+    },
+    onFinish: (message) => {
+      console.log('[ChatPanel] Stream finished:', message.id)
+      // Sync project title after first message
+      if (!firstMessageSentRef.current && currentProjectId) {
+        firstMessageSentRef.current = true
+        pollProjectTitle()
+      }
+    },
+    onError: (err) => {
+      console.error('[ChatPanel] Stream error:', err)
+      showToast(`Error: ${err.message}`, 'error')
+    },
+  })
+
+  const isLoading = status === 'streaming' || status === 'submitted'
+
+  // Poll for project title generation
+  const pollProjectTitle = useCallback(async () => {
+    if (!currentProjectId) return
+
+    const poll = async (attempt = 1, maxAttempts = 20) => {
+      try {
+        const title = await syncProjectTitle(currentProjectId)
+        if (title) {
+          console.log(`[ChatPanel] Project title synced: "${title}"`)
+          return
+        }
+        if (attempt < maxAttempts) {
+          setTimeout(() => poll(attempt + 1, maxAttempts), 1000)
+        }
+      } catch (error) {
+        console.error('[ChatPanel] Failed to sync title:', error)
+      }
+    }
+
+    setTimeout(() => poll(), 1000)
+  }, [currentProjectId, syncProjectTitle])
 
 
 
+
+  // Load chat history on mount
+  useEffect(() => {
+    let cancelled = false
+
+    const loadHistory = async () => {
+      if (!currentProjectId) return
+
+      try {
+        const response = await apiClient.get(API_ENDPOINTS.projectChatHistory(currentProjectId))
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            if (!cancelled) setHistoryLoaded(true)
+            return
+          }
+          throw new Error(`Failed to load history: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        if (cancelled) return
+
+        // Convert to AI SDK UIMessage format
+        const historyMessages: UIMessage[] = (data.messages || [])
+          .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+          .map((msg: any) => ({
+            id: msg.message_id,
+            role: msg.role,
+            content: msg.content,
+            createdAt: new Date(msg.timestamp),
+            parts: [{ type: 'text' as const, text: msg.content }],
+          }))
+
+        // Check if there are user messages (to set firstMessageSentRef)
+        if (historyMessages.some(m => m.role === 'user')) {
+          firstMessageSentRef.current = true
+        }
+
+        setMessages(historyMessages)
+        setHistoryLoaded(true)
+      } catch (err) {
+        if (!cancelled) {
+          console.error('[ChatPanel] Failed to load history:', err)
+          setHistoryLoaded(true)
+        }
+      }
+    }
+
+    loadHistory()
+
+    return () => { cancelled = true }
+  }, [currentProjectId, setMessages])
 
   // Reset textarea height on mount and cleanup debounce timer on unmount
   useEffect(() => {
@@ -84,152 +192,46 @@ export function ChatPanel({
 
   // Check for initial prompt and send it automatically
   useEffect(() => {
+    console.log('[ChatPanel] Initial prompt useEffect triggered:', {
+      historyLoaded,
+      currentProjectId,
+      sandboxReady,
+      initialPromptProcessed: initialPromptProcessedRef.current,
+      messageCount: messages.length
+    })
+
     // Only run once per project when history is loaded
     if (!historyLoaded || !currentProjectId || initialPromptProcessedRef.current) {
       return
     }
 
-    // Check if there are any user messages already (not just assistant welcome message)
+    // Wait for sandbox to be ready
+    if (!sandboxReady) {
+      console.log('[ChatPanel] ⏳ Waiting for sandbox to be ready')
+      return
+    }
+
+    // Check if there are any user messages already
     const hasUserMessages = messages.some(msg => msg.role === 'user')
     if (hasUserMessages) {
-      // Mark that first message was already sent (from history)
       firstMessageSentRef.current = true
+      return
     }
 
     const storageKey = `initial_prompt_${currentProjectId}`
     const initialPrompt = sessionStorage.getItem(storageKey)
 
     if (initialPrompt && initialPrompt.trim()) {
-      if (hasUserMessages) {
-        return
-      }
-
-      // Mark as processed to prevent re-runs
       initialPromptProcessedRef.current = true
+      console.log('[ChatPanel] ✅ Sending initial prompt:', initialPrompt.substring(0, 50))
 
-      // Remove from storage
+      // Use AI SDK sendMessage
+      sendMessage({ text: initialPrompt })
+
+      // Remove from storage after sending
       sessionStorage.removeItem(storageKey)
-
-      // Process initial prompt immediately
-      sendInitialPrompt(initialPrompt)
     }
-
-    // Cleanup: Reset sending ref on unmount to handle React StrictMode
-    return () => {
-      isSendingRef.current = false
-    }
-  }, [historyLoaded, currentProjectId, messages])
-
-  // Send initial prompt - bypasses input state and button logic
-  const sendInitialPrompt = async (prompt: string) => {
-    // Prevent double-send
-    if (isSendingRef.current) {
-      console.log('[ChatPanel] sendInitialPrompt blocked - already sending')
-      return
-    }
-    isSendingRef.current = true
-    console.log('[ChatPanel] sendInitialPrompt starting with prompt:', prompt)
-
-    // 1. Add user message immediately to UI
-    const userMessage: ChatMessageType = {
-      id: `user-msg-${Date.now()}`,
-      role: 'user',
-      content: prompt,
-      timestamp: new Date().toISOString(),
-      messageType: 'chat',
-    }
-    console.log('[ChatPanel] Adding user message to UI:', userMessage.id)
-    addMessage(userMessage)
-
-    // 2. Add thinking message
-    const assistantId = `assistant-${Date.now()}`
-    const thinkingMessage: ChatMessageType = {
-      id: assistantId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date().toISOString(),
-      messageType: 'chat',
-    }
-    addMessage(thinkingMessage)
-    setThinkingMessageId(assistantId)
-    setLoading(true)
-
-    // 3. Send to API via HTTP streaming
-    try {
-      const response = await apiClient.post(
-        API_ENDPOINTS.projectChat(currentProjectId!),
-        { message: prompt, images: [] }
-      )
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      if (!response.body) {
-        throw new Error('Response body is empty')
-      }
-
-      // 4. Read streaming response
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulatedText = ''
-      let lastUpdateTime = 0
-      const UPDATE_INTERVAL = 50
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) {
-          setThinkingMessageId(null)
-          if (accumulatedText) {
-            const finalMessage: ChatMessageType = {
-              ...thinkingMessage,
-              content: accumulatedText,
-            }
-            addMessage(finalMessage)
-          }
-          break
-        }
-
-        const chunk = decoder.decode(value, { stream: true })
-        accumulatedText += chunk
-
-        // Throttle UI updates
-        const now = Date.now()
-        if (now - lastUpdateTime >= UPDATE_INTERVAL) {
-          const updatedMessage: ChatMessageType = {
-            ...thinkingMessage,
-            content: accumulatedText,
-          }
-          addMessage(updatedMessage)
-          lastUpdateTime = now
-        }
-      }
-
-      setLoading(false)
-      isSendingRef.current = false
-      console.log('[ChatPanel] sendInitialPrompt completed successfully')
-
-      // Sync project title after first message
-      if (!firstMessageSentRef.current && currentProjectId) {
-        firstMessageSentRef.current = true
-        console.log('[ChatPanel] First message sent, syncing project title...')
-        setTimeout(async () => {
-          try {
-            await syncProjectTitle(currentProjectId)
-            console.log('[ChatPanel] Project title synced successfully')
-          } catch (error) {
-            console.error('[ChatPanel] Failed to sync project title:', error)
-          }
-        }, 2000) // Wait 2s for Mastra to generate title
-      }
-    } catch (error) {
-      console.error('[ChatPanel] Failed to send initial prompt:', error)
-      setThinkingMessageId(null)
-      setLoading(false)
-      isSendingRef.current = false
-      showToast('Failed to send message', 'error')
-    }
-  }
+  }, [historyLoaded, currentProjectId, messages, sandboxReady, sendMessage])
 
   // Memoize compressed image sizes to avoid repeated calculations
   const compressedImageSizes = useMemo(() => {
@@ -244,7 +246,7 @@ export function ChatPanel({
     const value = e.target.value
 
     // Update input value immediately for responsive typing
-    setInput(value)
+    setInputValue(value)
 
     // Debounce height calculation to reduce re-renders
     const textarea = e.target
@@ -357,45 +359,30 @@ export function ChatPanel({
     }
   }
 
-  const handleSendMessage = async () => {
-    if ((!input.trim() && selectedImages.length === 0) || loading) return
-
-    // Prevent double-send (React StrictMode protection)
-    if (isSendingRef.current) {
-      console.warn('Message send already in progress, blocking duplicate')
-      return
-    }
-    isSendingRef.current = true
+  const handleSendMessage = () => {
+    if ((!inputValue.trim() && selectedImages.length === 0) || isLoading) return
 
     // Format selected elements context with detailed info
-    let messageWithContext = input
+    let messageWithContext = inputValue
     if (selectedElements && selectedElements.length > 0) {
       const elementsContext = selectedElements.map((el, idx) => {
         const parts: string[] = []
 
-        // Element identification
         const name = el.react?.componentName || el.tagName?.toLowerCase() || 'element'
         parts.push(`${idx + 1}. <${name}>`)
-
-        // Selector
         parts.push(`   Selector: ${el.selector}`)
 
-        // Text content
         if (el.text) {
           const text = el.text.length > 100 ? `${el.text.substring(0, 100)}...` : el.text
           parts.push(`   Text: "${text}"`)
         }
 
-        // Semantic info
         if (el.semantic?.role) parts.push(`   Role: ${el.semantic.role}`)
         if (el.semantic?.ariaLabel) parts.push(`   Label: ${el.semantic.ariaLabel}`)
-
-        // Important attributes
         if (el.attributes?.placeholder) parts.push(`   Placeholder: "${el.attributes.placeholder}"`)
         if (el.attributes?.type) parts.push(`   Type: ${el.attributes.type}`)
         if (el.attributes?.['data-testid']) parts.push(`   TestID: ${el.attributes['data-testid']}`)
 
-        // React component info
         if (el.react?.componentName) {
           parts.push(`   Component: ${el.react.componentName}`)
           if (el.react.source?.fileName) {
@@ -404,7 +391,6 @@ export function ChatPanel({
           }
         }
 
-        // Position info (for layout context)
         if (el.rect) {
           parts.push(`   Position: (${Math.round(el.rect.x)}, ${Math.round(el.rect.y)}) ${Math.round(el.rect.width)}×${Math.round(el.rect.height)}px`)
         }
@@ -412,44 +398,17 @@ export function ChatPanel({
         return parts.join('\n')
       }).join('\n\n')
 
-      messageWithContext = `[Visual Contexts - ${selectedElements.length} element${selectedElements.length > 1 ? 's' : ''}]\n${elementsContext}\n\n[User Query]\n${input}`
+      messageWithContext = `[Visual Contexts - ${selectedElements.length} element${selectedElements.length > 1 ? 's' : ''}]\n${elementsContext}\n\n[User Query]\n${inputValue}`
     }
 
-    // Use pre-compressed images
-    const compressedImages = compressedImagesPreview
+    // Use AI SDK sendMessage - it handles everything
+    sendMessage({ text: messageWithContext })
 
-    // Validate compressed images
-    if (compressedImages.length > 0) {
-      const totalSize = compressedImages.reduce((acc, img) => {
-        const padding = (img.data.match(/=/g) || []).length
-        return acc + (img.data.length * 6 - padding * 8) / 8
-      }, 0)
-
-      const totalKB = (totalSize / 1024).toFixed(1)
-      console.log(`📤 Sending ${compressedImages.length} image(s): ${totalKB} KB total`)
-
-      if (totalSize > 500 * 1024) {
-        showToast(`Warning: Total image size is ${totalKB} KB (target: 500 KB)`, 'warning')
-      }
-    }
-
-    // Add user message immediately to UI (optimistic update)
-    const userMessage: ChatMessageType = {
-      id: `user-msg-${Date.now()}`,
-      role: 'user',
-      content: input, // Use original input, not messageWithContext
-      timestamp: new Date().toISOString(),
-      messageType: 'chat',
-    }
-    addMessage(userMessage)
-
-    // Clear input and reset UI immediately after adding user message
-    console.log('[ChatPanel] Clearing input after send, current value:', input)
-    setInput('')
+    // Clear input and reset UI
+    setInputValue('')
     setTextareaHeight(80)
     if (inputRef.current) {
       inputRef.current.style.height = '80px'
-      console.log('[ChatPanel] Input ref value after clear:', inputRef.current.value)
     }
 
     // Clear images after sending
@@ -460,182 +419,76 @@ export function ChatPanel({
     if (selectedElements && selectedElements.length > 0) {
       onClearElements?.()
     }
-
-    // Add "Thinking..." message before starting request
-    const messageId = `assistant-${Date.now()}`
-    const thinkingMessage: ChatMessageType = {
-      id: messageId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date().toISOString(),
-      messageType: 'chat',
-    }
-    addMessage(thinkingMessage)
-    setThinkingMessageId(messageId)
-
-    // Send via HTTP streaming
-    try {
-      // Use apiClient which handles auth, token refresh, and retries
-      const response = await apiClient.post(
-        API_ENDPOINTS.projectChat(currentProjectId!),
-        {
-          message: messageWithContext,
-          images: compressedImages,
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      if (!response.body) {
-        throw new Error('Response body is empty')
-      }
-
-      // Read streaming response (simple text streaming)
-      console.log('[ChatPanel] Starting to read stream...')
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulatedText = ''
-      let chunkCount = 0
-      let lastUpdateTime = 0
-      const UPDATE_INTERVAL = 50 // Update UI every 50ms for smooth streaming
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) {
-          console.log('[ChatPanel] Stream done, total chunks:', chunkCount)
-
-          // Clear thinking state
-          setThinkingMessageId(null)
-
-          // Final update to ensure all content is shown
-          if (accumulatedText) {
-            const streamMessage: ChatMessageType = {
-              id: messageId,
-              role: 'assistant',
-              content: accumulatedText,
-              timestamp: new Date().toISOString(),
-              messageType: 'chat',
-            }
-            addMessage(streamMessage)
-          }
-
-          // Sync project title after first message completes
-          if (!firstMessageSentRef.current && currentProjectId) {
-            firstMessageSentRef.current = true
-            console.log('[ChatPanel] First message completed, polling for project title...')
-
-            // Poll for title generation (Mastra generates title asynchronously)
-            const pollTitle = async (attempt = 1, maxAttempts = 20) => {
-              try {
-                const title = await syncProjectTitle(currentProjectId)
-                if (title) {
-                  console.log(`[ChatPanel] Project title synced successfully after ${attempt} attempts: "${title}"`)
-                  return
-                }
-
-                // Title not generated yet, retry
-                if (attempt < maxAttempts) {
-                  console.log(`[ChatPanel] Title not ready, retrying (${attempt}/${maxAttempts})...`)
-                  setTimeout(() => pollTitle(attempt + 1, maxAttempts), 500) // Check every 500ms
-                } else {
-                  console.warn('[ChatPanel] Title generation timeout after 10s')
-                }
-              } catch (error) {
-                console.error('[ChatPanel] Failed to sync project title:', error)
-              }
-            }
-
-            // Start polling after a brief delay to let Mastra start processing
-            setTimeout(() => pollTitle(), 500)
-          }
-
-          break
-        }
-
-        chunkCount++
-        const chunk = decoder.decode(value, { stream: true })
-        console.log('[ChatPanel] Chunk #' + chunkCount + ':', chunk.substring(0, 50))
-        accumulatedText += chunk
-
-        // On first chunk, clear thinking state
-        if (chunkCount === 1) {
-          setThinkingMessageId(null)
-        }
-
-        // Throttle UI updates for better performance
-        const now = Date.now()
-        if (now - lastUpdateTime >= UPDATE_INTERVAL || chunkCount === 1) {
-          lastUpdateTime = now
-
-          // Update UI with streaming content using addMessage (handles updates automatically)
-          const streamMessage: ChatMessageType = {
-            id: messageId,
-            role: 'assistant',
-            content: accumulatedText,
-            timestamp: new Date().toISOString(),
-            messageType: 'chat',
-          }
-
-          console.log('[ChatPanel] Updating UI with', accumulatedText.length, 'chars')
-          // addMessage will update existing message if ID matches
-          addMessage(streamMessage)
-        }
-      }
-
-      console.log('[ChatPanel] Streaming completed, final text length:', accumulatedText.length)
-
-      // Sync project title from Mastra Memory after first message
-      if (!firstMessageSentRef.current && currentProjectId) {
-        firstMessageSentRef.current = true
-        console.log('[ChatPanel] First message completed, syncing thread title...')
-        setTimeout(async () => {
-          try {
-            const title = await syncProjectTitle(currentProjectId)
-            if (title) {
-              console.log('[ChatPanel] Project title synced:', title)
-            }
-          } catch (error) {
-            console.error('[ChatPanel] Failed to sync project title:', error)
-          }
-        }, 2000) // Wait 2 seconds for Mastra to generate title
-      }
-    } catch (error: any) {
-      console.error('[ChatPanel] Streaming error:', error)
-      showToast(`Failed to send message: ${error.message}`, 'error')
-      // Clear thinking state on error
-      setThinkingMessageId(null)
-      // Remove the thinking message if there was an error
-      removeMessage(messageId)
-    } finally {
-      // Reset sending guard after completion
-      setTimeout(() => {
-        isSendingRef.current = false
-      }, 100)
-    }
   }
 
   const applyTorchSuggestion = useCallback((prompt: string) => {
-    setInput(prompt)
+    setInputValue(prompt)
     inputRef.current?.focus()
   }, [])
 
   // Removed unused functions - handleLogout and handleNavigate
   // These were not being used in the component
 
+  // Convert AI SDK UIMessage to ChatMessage format for ChatMessage component
+  // AI SDK v5 uses `parts` array instead of `content` string
+  const convertedMessages: ChatMessageType[] = messages.map((msg) => {
+    // Extract text content from parts array (AI SDK v5 format)
+    const textContent = msg.parts
+      ?.filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+      .map(part => part.text)
+      .join('') || ''
+
+    // Extract reasoning/thinking content
+    const reasoningContent = msg.parts
+      ?.filter((part): part is { type: 'reasoning'; reasoning: string } => part.type === 'reasoning')
+      .map(part => part.reasoning)
+      .join('') || undefined
+
+    // Extract tool invocations
+    const toolInvocations = msg.parts
+      ?.filter((part): part is { type: 'tool-invocation'; toolInvocation: any } => part.type === 'tool-invocation')
+      .map(part => ({
+        toolName: part.toolInvocation.toolName,
+        args: part.toolInvocation.args,
+        state: part.toolInvocation.state,
+        result: part.toolInvocation.state === 'result' ? part.toolInvocation.result : undefined,
+      }))
+
+    return {
+      id: msg.id,
+      role: msg.role as 'user' | 'assistant',
+      content: textContent,
+      timestamp: msg.createdAt?.toISOString() || new Date().toISOString(),
+      messageType: 'chat' as const,
+      reasoning: reasoningContent,
+      toolInfo: toolInvocations && toolInvocations.length > 0 ? toolInvocations : undefined,
+    }
+  })
+
+  // Auto-scroll when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
   return (
     <div className="chat-panel">
       <div className="chat-messages">
-        {messages.map((msg) => (
+        {convertedMessages.map((msg) => (
           <ChatMessage
             key={msg.id}
             message={msg}
             onApplyPrompt={applyTorchSuggestion}
-            isPending={msg.metadata?.pending}
-            isThinking={msg.id === thinkingMessageId}
+            isPending={false}
+            isThinking={status === 'streaming' && msg.role === 'assistant' && msg === convertedMessages[convertedMessages.length - 1]}
           />
         ))}
+
+        {/* Show streaming indicator */}
+        {status === 'submitted' && (
+          <div className="message message-assistant">
+            <div className="message-content thinking">Thinking...</div>
+          </div>
+        )}
 
         <div ref={messagesEndRef} />
       </div>
@@ -645,8 +498,8 @@ export function ChatPanel({
           {/* Selected Elements Carousel */}
           <SelectedElementsCarousel
             elements={selectedElements}
-            onRemove={onRemoveElement || (() => {})}
-            onClear={onClearElements || (() => {})}
+            onRemove={onRemoveElement || (() => { })}
+            onClear={onClearElements || (() => { })}
           />
 
           {/* Image Preview */}
@@ -659,17 +512,11 @@ export function ChatPanel({
               borderBottom: '1px solid var(--border-color)',
             }}>
               {selectedImages.map((image, index) => {
-                // Use memoized values
                 const compressedImg = compressedImagesPreview[index]
                 const compressedSize = compressedImageSizes[index] || 0
-
                 const compressedKB = (compressedSize / 1024).toFixed(1)
                 const originalKB = (image.size / 1024).toFixed(1)
-
-                // Show compressed size if available, otherwise show "Compressing..."
-                const sizeDisplay = compressedImg
-                  ? `${compressedKB} KB`
-                  : 'Compressing...'
+                const sizeDisplay = compressedImg ? `${compressedKB} KB` : 'Compressing...'
 
                 return (
                   <div
@@ -686,13 +533,8 @@ export function ChatPanel({
                     <img
                       src={imagePreviewUrls[index]}
                       alt={`Attachment ${index + 1}`}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                      }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
-                    {/* Compressed size badge */}
                     <div
                       style={{
                         position: 'absolute',
@@ -741,22 +583,19 @@ export function ChatPanel({
           <textarea
             ref={inputRef}
             className="chat-input"
-            value={input}
+            value={inputValue}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder={
-              loading
+              isLoading
                 ? 'Queue more tasks to be executed (@ for files, / for commands)'
                 : 'Ask me to help with your code... (@ for files, / for commands, paste images)'
             }
-            style={{
-              height: `${textareaHeight}px`,
-            }}
+            style={{ height: `${textareaHeight}px` }}
           />
 
           <div className="chat-input-footer">
-            {/* Hidden file input */}
             <input
               ref={fileInputRef}
               type="file"
@@ -765,29 +604,27 @@ export function ChatPanel({
               onChange={handleImageSelect}
               style={{ display: 'none' }}
             />
-            
-            {/* Left side: Empty for now */}
+
             <div className="input-footer-left"></div>
 
-            {/* Right side: Image and Send buttons */}
             <div className="input-footer-right">
               <button
-                  type="button"
-                  className="action-button image-button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={loading}
-                  title="Attach images"
-                >
-                  <ImagePlus size={16} />
-                  {selectedImages.length > 0 && (
-                    <span className="badge">{selectedImages.length}</span>
-                  )}
+                type="button"
+                className="action-button image-button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                title="Attach images"
+              >
+                <ImagePlus size={16} />
+                {selectedImages.length > 0 && (
+                  <span className="badge">{selectedImages.length}</span>
+                )}
               </button>
 
               <button
                 className="action-button send-button"
                 onClick={handleSendMessage}
-                disabled={loading || !input.trim()}
+                disabled={isLoading || !inputValue.trim()}
               >
                 <ArrowUp size={18} />
               </button>
