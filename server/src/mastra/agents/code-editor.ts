@@ -74,75 +74,19 @@ export async function* streamCodeEditing(
       },
     })
 
-    // Iterate through the full stream to capture all events (text, tools, etc.)
-    console.log('[Code Editor] Starting to iterate fullStream...')
+    // Iterate through the text stream
+    console.log('[Code Editor] Starting to iterate textStream...')
+    let chunkCount = 0
 
-    // @ts-ignore - Mastra/AI SDK types might not be fully updated in dev environment
-    const fullStream = stream.fullStream;
-
-    if (!fullStream) {
-      console.warn('[Code Editor] stream.fullStream is missing, falling back to textStream');
-      for await (const chunk of stream.textStream) {
-        yield JSON.stringify({ type: 'text-delta', content: chunk }) + '\n';
+    for await (const chunk of stream.textStream) {
+      chunkCount++
+      if (chunkCount % 10 === 0) {
+        console.log('[Code Editor] Progress: chunk #' + chunkCount)
       }
-      return;
+      yield chunk
     }
 
-    let chunkCount = 0;
-
-    // @ts-ignore
-    for await (const part of fullStream) {
-      chunkCount++;
-      try {
-        if (part.type === 'text-delta') {
-          // Try to handle different AI SDK versions
-          // @ts-ignore
-          const content = part.textDelta || part.text || (part.payload?.textDelta) || '';
-
-          yield JSON.stringify({
-            type: 'text-delta',
-            content: content
-          }) + '\n';
-        }
-        else if (part.type === 'tool-call') {
-          console.log(`[Code Editor] Tool Call detected`);
-          // @ts-ignore
-          const toolName = part.toolName || part.payload?.toolName;
-          // @ts-ignore
-          const args = part.args || part.payload?.args;
-
-          yield JSON.stringify({
-            type: 'tool-call',
-            toolName: toolName,
-            toolCallId: part.toolCallId,
-            args: args
-          }) + '\n';
-        }
-        else if (part.type === 'tool-result') {
-          console.log(`[Code Editor] Tool Result detected`);
-          // @ts-ignore
-          const toolName = part.toolName || part.payload?.toolName;
-
-          yield JSON.stringify({
-            type: 'tool-result',
-            toolName: toolName,
-            toolCallId: part.toolCallId,
-            result: part.result
-          }) + '\n';
-        }
-        else if (part.type === 'error') {
-          console.error('[Code Editor] Stream Error:', part.error);
-          yield JSON.stringify({
-            type: 'error',
-            error: String(part.error)
-          }) + '\n';
-        }
-      } catch (err) {
-        console.error('[Code Editor] Error processing stream part:', err);
-      }
-    }
-
-    console.log('[Code Editor] Stream completed, total events:', chunkCount)
+    console.log('[Code Editor] Stream completed, total chunks:', chunkCount)
   } catch (error: any) {
     console.error('[Code Editor] Error during streaming:', error.message)
     console.error('[Code Editor] Error stack:', error.stack)

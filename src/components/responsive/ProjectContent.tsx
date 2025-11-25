@@ -26,6 +26,8 @@ interface ProjectContentProps {
 }
 
 export function ProjectContent({ project, onBack, onProjectUpdate, githubUsername }: ProjectContentProps) {
+  const [selectedElementInput, setSelectedElementInput] = useState<string>('')
+  const [selectedElements, setSelectedElements] = useState<any[]>([]) // Track all selected elements
   const [isInitializing, setIsInitializing] = useState(false)
   const [isChatFloating, setIsChatFloating] = useState(false)
   const [floatingPosition, setFloatingPosition] = useState({ left: 24, bottom: 24 })
@@ -150,6 +152,8 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
       navigate('/projects')
     }
   }
+
+  // Elements are now only shown in carousel, not in input
 
   const handleViewportChange = useCallback((width: number, height: number) => {
     // Only update viewport dimensions - don't resize panels
@@ -382,7 +386,14 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                     projectId={project?.project_id}
                     projectName={project.name}
                     onBack={handleBack}
+                    externalInput={selectedElementInput}
+                    onExternalInputConsumed={() => setSelectedElementInput('')}
+                    selectedElements={selectedElements}
+                    onRemoveElement={(index) => {
+                      setSelectedElements((prev) => prev.filter((_, i) => i !== index))
+                    }}
                     sandboxReady={project?.status === 'active' && !!project?.ephemeral_url}
+                    onClearElements={() => setSelectedElements([])}
                   />
                 </ErrorBoundary>
               </div>
@@ -440,7 +451,14 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
                       projectId={project?.project_id}
                       projectName={project.name}
                       onBack={handleBack}
+                      externalInput={selectedElementInput}
+                      onExternalInputConsumed={() => setSelectedElementInput('')}
+                      selectedElements={selectedElements}
+                      onRemoveElement={(index) => {
+                        setSelectedElements((prev) => prev.filter((_, i) => i !== index))
+                      }}
                       sandboxReady={project?.status === 'active' && !!project?.ephemeral_url}
+                      onClearElements={() => setSelectedElements([])}
                     />
                   </ErrorBoundary>
                 </div>
@@ -532,7 +550,15 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
   return (
     <ResponsiveProjectContent
       project={project}
+      selectedElementInput={selectedElementInput}
+      selectedElements={selectedElements}
       onBack={handleBack}
+      onElementSelected={() => { }}
+      onExternalInputConsumed={() => setSelectedElementInput('')}
+      onRemoveElement={(index) => {
+        setSelectedElements((prev) => prev.filter((_, i) => i !== index))
+      }}
+      onClearElements={() => setSelectedElements([])}
       desktopContent={desktopContent}
     />
   )

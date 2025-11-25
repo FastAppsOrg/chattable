@@ -20,10 +20,8 @@
     "test:run": "vitest run"
   },
   "dependencies": {
-    "@ai-sdk/react": "^2.0.101",
     "@monaco-editor/react": "^4.7.0",
     "@supabase/supabase-js": "^2.81.1",
-    "ai": "^5.0.101",
     "date-fns": "^4.1.0",
     "esbuild-wasm": "^0.27.0",
     "lucide-react": "^0.544.0",
