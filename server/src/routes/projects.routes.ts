@@ -606,17 +606,16 @@ export function createProjectsRoutes(
         });
       }
 
-      const toolsRecord = await mcpService.getTools(project.mcpEphemeralUrl);
+      // Get both Mastra tools (with execute) and raw tools (with _meta)
+      const [toolsRecord, rawToolsList] = await Promise.all([
+        mcpService.getTools(project.mcpEphemeralUrl),
+        mcpService.getRawToolsList(project.mcpEphemeralUrl).catch(() => []),
+      ]);
 
-      // Debug: Log full tool structure
-      const firstToolName = Object.keys(toolsRecord)[0];
-      if (firstToolName) {
-        const t = toolsRecord[firstToolName];
-        console.log('[MCP Tools Debug] Full tool keys:', Object.keys(t));
-        console.log('[MCP Tools Debug] tool.parameters:', t.parameters);
-        console.log('[MCP Tools Debug] tool.parameters?.jsonSchema:', t.parameters?.jsonSchema);
-        console.log('[MCP Tools Debug] tool.inputSchema type:', typeof t.inputSchema);
-        console.log('[MCP Tools Debug] tool.inputSchema keys:', t.inputSchema ? Object.keys(t.inputSchema) : 'null');
+      // Create a map of raw tools by name for quick lookup of _meta
+      const rawToolsMap = new Map<string, any>();
+      for (const rawTool of rawToolsList) {
+        rawToolsMap.set(rawTool.name, rawTool);
       }
 
       // Convert Record<string, Tool> to array format for frontend compatibility
@@ -625,6 +624,9 @@ export function createProjectsRoutes(
       // Strip 'main_' prefix since we only have one server
       // Note: Mastra converts inputSchema to Zod - we need to convert it back to JSON Schema
       const toolsArray = Object.entries(toolsRecord).map(([name, tool]: [string, any]) => {
+        const cleanName = name.replace(/^main_/, '');
+        const rawTool = rawToolsMap.get(cleanName);
+
         // Mastra MCPClient converts the original JSON schema to Zod
         // We need to convert it back to JSON Schema for the frontend
         let jsonSchema: any = { type: 'object', properties: {} };
@@ -644,10 +646,11 @@ export function createProjectsRoutes(
         }
 
         return {
-          name: name.replace(/^main_/, ''), // Remove 'main_' prefix
+          name: cleanName,
           description: tool.description,
           inputSchema: jsonSchema,
-          _meta: tool._meta,
+          // Get _meta from raw tool since Mastra doesn't preserve it
+          _meta: rawTool?._meta,
         };
       });
 

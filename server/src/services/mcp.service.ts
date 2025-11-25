@@ -1,4 +1,6 @@
 import { MCPClient } from '@mastra/mcp';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 /**
  * Service for managing MCP clients for Freestyle projects
@@ -10,6 +12,7 @@ import { MCPClient } from '@mastra/mcp';
  */
 export class MCPService {
   private clients: Map<string, MCPClient> = new Map();
+  private rawClients: Map<string, Client> = new Map();
 
   /**
    * Get or create an MCP client for a given URL
@@ -70,6 +73,40 @@ export class MCPService {
       return tools;
     } catch (error) {
       console.error('[MCP] getTools failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get or create a raw MCP SDK client for a given URL
+   * This client is used to get raw tool metadata including _meta
+   */
+  async getRawClient(mcpUrl: string): Promise<Client> {
+    if (this.rawClients.has(mcpUrl)) {
+      return this.rawClients.get(mcpUrl)!;
+    }
+
+    console.log(`[MCP] Creating raw SDK client at ${mcpUrl}`);
+
+    const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
+    const client = new Client({ name: 'chattable-raw', version: '1.0.0' });
+    await client.connect(transport);
+
+    this.rawClients.set(mcpUrl, client);
+    return client;
+  }
+
+  /**
+   * Get raw MCP tools list with _meta intact
+   * Uses raw MCP SDK client to call tools/list directly
+   */
+  async getRawToolsList(mcpUrl: string) {
+    try {
+      const client = await this.getRawClient(mcpUrl);
+      const result = await client.listTools();
+      return result.tools || [];
+    } catch (error) {
+      console.error('[MCP] getRawToolsList failed:', error);
       throw error;
     }
   }
@@ -159,5 +196,11 @@ export class MCPService {
       await client.disconnect();
     }
     this.clients.clear();
+
+    // Close raw clients too
+    for (const [mcpUrl, client] of this.rawClients.entries()) {
+      await client.close();
+    }
+    this.rawClients.clear();
   }
 }
