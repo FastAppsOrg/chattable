@@ -8,53 +8,97 @@ import type { ChatMessageProps } from '../../types/chat'
 import { getToolIcon } from '../../utils/formatters'
 import { useTheme } from '../../hooks/useTheme'
 
-export const ChatMessage = memo(function ChatMessage({ message, onApplyPrompt, isPending, isThinking }: ChatMessageProps) {
-  const { theme } = useTheme()
-  if (message.messageType === 'tool_use' && message.toolInfo) {
-    const toolIcon = getToolIcon(message.toolInfo.name)
-    // console.log('message', message)
+// Helper to render a single tool invocation
+function ToolInvocationDisplay({ tool }: { tool: { toolName: string; args: any; state: string; result?: any } }) {
+  const toolIcon = getToolIcon(tool.toolName)
 
-    // Special handling for TodoWrite tool
-    if (message.toolInfo.name === 'TodoWrite' && message.toolInfo.input?.todos) {
-      const todos = message.toolInfo.input.todos
-      const todoMarkdown = todos
-        .map((todo: any) => {
-          const checkbox = todo.status === 'completed' ? '[x]' : '[ ]'
-          const text = todo.status === 'in_progress' ? todo.activeForm : todo.content
-          const statusEmoji = todo.status === 'in_progress' ? ' 🔄' : ''
-          return `- ${checkbox} ${text}${statusEmoji}`
-        })
-        .join('\n')
+  // Special handling for TodoWrite tool
+  if (tool.toolName === 'TodoWrite' && tool.args?.todos) {
+    const todos = tool.args.todos
+    const todoMarkdown = todos
+      .map((todo: any) => {
+        const checkbox = todo.status === 'completed' ? '[x]' : '[ ]'
+        const text = todo.status === 'in_progress' ? todo.activeForm : todo.content
+        const statusEmoji = todo.status === 'in_progress' ? ' 🔄' : ''
+        return `- ${checkbox} ${text}${statusEmoji}`
+      })
+      .join('\n')
 
-      return (
-        <div className="message tool">
-          <div className="tool-icon">{toolIcon}</div>
-          <div className="tool-content">
-            <div className="tool-name">{message.toolInfo.name}</div>
-            <div className="tool-input">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{todoMarkdown}</ReactMarkdown>
-            </div>
+    return (
+      <div className="tool-invocation">
+        <div className="tool-icon">{toolIcon}</div>
+        <div className="tool-content">
+          <div className="tool-name">
+            {tool.toolName}
+            {tool.state !== 'result' && <span className="tool-state"> (running...)</span>}
+          </div>
+          <div className="tool-input">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{todoMarkdown}</ReactMarkdown>
           </div>
         </div>
-      )
-    }
+      </div>
+    )
+  }
 
-    // Extract relevant input information based on tool type
+  // Extract relevant input information based on tool type
+  let inputDisplay = ''
+  const args = tool.args
+  if (args) {
+    if (tool.toolName === 'Bash' && args.command) {
+      inputDisplay = args.command
+    } else if (typeof args === 'string') {
+      inputDisplay = args
+    } else if (args.file_path) {
+      inputDisplay = args.file_path
+    } else if (args.path) {
+      inputDisplay = args.path
+    } else if (args.pattern) {
+      inputDisplay = args.pattern
+    } else {
+      inputDisplay = JSON.stringify(args, null, 2)
+    }
+  }
+
+  return (
+    <div className="tool-invocation">
+      <div className="tool-icon">{toolIcon}</div>
+      <div className="tool-content">
+        <div className="tool-name">
+          {tool.toolName}
+          {tool.state !== 'result' && <span className="tool-state"> (running...)</span>}
+        </div>
+        {inputDisplay && (
+          <div className="tool-input">
+            {args?.description && (
+              <>
+                <code>{args.description}</code> <br />
+              </>
+            )}
+            <code>{inputDisplay}</code>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export const ChatMessage = memo(function ChatMessage({ message, onApplyPrompt, isPending, isThinking }: ChatMessageProps) {
+  const { theme } = useTheme()
+
+  // Legacy single tool_use message type (backward compatibility)
+  if (message.messageType === 'tool_use' && message.legacyToolInfo) {
+    const toolIcon = getToolIcon(message.legacyToolInfo.name)
+
     let inputDisplay = ''
-    if (message.toolInfo.input) {
-      if (message.toolInfo.name === 'Bash' && message.toolInfo.input.command) {
-        inputDisplay = message.toolInfo.input.command
-      } else if (typeof message.toolInfo.input === 'string') {
-        inputDisplay = message.toolInfo.input
-      } else if (message.toolInfo.input.file_path) {
-        inputDisplay = message.toolInfo.input.file_path
-      } else if (message.toolInfo.input.path) {
-        inputDisplay = message.toolInfo.input.path
-      } else if (message.toolInfo.input.pattern) {
-        inputDisplay = message.toolInfo.input.pattern
+    if (message.legacyToolInfo.input) {
+      if (message.legacyToolInfo.name === 'Bash' && message.legacyToolInfo.input.command) {
+        inputDisplay = message.legacyToolInfo.input.command
+      } else if (typeof message.legacyToolInfo.input === 'string') {
+        inputDisplay = message.legacyToolInfo.input
+      } else if (message.legacyToolInfo.input.file_path) {
+        inputDisplay = message.legacyToolInfo.input.file_path
       } else {
-        // For other tools, try to display the most relevant field
-        inputDisplay = JSON.stringify(message.toolInfo.input, null, 2)
+        inputDisplay = JSON.stringify(message.legacyToolInfo.input, null, 2)
       }
     }
 
@@ -62,14 +106,9 @@ export const ChatMessage = memo(function ChatMessage({ message, onApplyPrompt, i
       <div className="message tool">
         <div className="tool-icon">{toolIcon}</div>
         <div className="tool-content">
-          <div className="tool-name">{message.toolInfo.name}</div>
+          <div className="tool-name">{message.legacyToolInfo.name}</div>
           {inputDisplay && (
             <div className="tool-input">
-              {message.toolInfo.input.description && (
-                <>
-                  <code>{message.toolInfo.input.description}</code> <br />
-                </>
-              )}
               <code>{inputDisplay}</code>
             </div>
           )}
@@ -126,9 +165,27 @@ export const ChatMessage = memo(function ChatMessage({ message, onApplyPrompt, i
 
   return (
     <div className={messageClass} style={{ opacity: isPending ? 0.5 : 1 }}>
+      {/* Reasoning/Thinking section */}
+      {message.reasoning && (
+        <div className="message-reasoning">
+          <div className="reasoning-header">Thinking</div>
+          <div className="reasoning-content">{message.reasoning}</div>
+        </div>
+      )}
+
+      {/* Tool invocations */}
+      {message.toolInfo && message.toolInfo.length > 0 && (
+        <div className="message-tools">
+          {message.toolInfo.map((tool, index) => (
+            <ToolInvocationDisplay key={`${tool.toolName}-${index}`} tool={tool} />
+          ))}
+        </div>
+      )}
+
+      {/* Main message content */}
       <div className={isThinking ? "message-content typing" : "message-content"}>
         {message.role === 'assistant' ? (
-          (!isThinking) && (
+          (!isThinking) && message.content && (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{

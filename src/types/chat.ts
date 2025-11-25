@@ -11,13 +11,25 @@ export interface ChatSession {
   active: boolean
 }
 
+export interface ToolInvocation {
+  toolName: string
+  args: any
+  state: 'partial-call' | 'call' | 'result'
+  result?: any
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system' | 'tool' | 'torch' | 'meta_agent'
   content: string
   timestamp: string
   messageType?: 'chat' | 'tool_use' | 'system'
-  toolInfo?: {
+  // AI SDK v5 style tool invocations (array of tools in one message)
+  toolInfo?: ToolInvocation[]
+  // Reasoning/thinking content from AI
+  reasoning?: string
+  // Legacy single tool info (for backward compatibility)
+  legacyToolInfo?: {
     name: string
     summary: string
     input?: any

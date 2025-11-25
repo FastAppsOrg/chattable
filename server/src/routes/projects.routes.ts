@@ -25,12 +25,11 @@ export function createProjectsRoutes(
       }
 
       const projectName = name || 'Untitled Project';
-      const deploymentId = projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 
       // Create DB project record immediately with status='initializing'
+      // project.id (UUID) is used as the folder name for local deployment
       const dbProject = await dbService.createProject({
         userId: user.id,
-        deploymentId,
         name: projectName,
         gitUrl: gitUrl || templateUrl,
         gitBranch: gitBranch || 'main',
@@ -47,7 +46,6 @@ export function createProjectsRoutes(
         default_branch: dbProject.gitBranch,
         status: 'initializing',
         created_at: dbProject.createdAt,
-        deployment_id: dbProject.deploymentId,
         ephemeral_url: null,
         mcp_ephemeral_url: null,
       });
@@ -119,7 +117,6 @@ export function createProjectsRoutes(
         default_branch: p.gitBranch,
         status: p.status,
         created_at: p.createdAt,
-        deployment_id: p.deploymentId,
         ephemeral_url: p.ephemeralUrl,
         mcp_ephemeral_url: p.mcpEphemeralUrl,
       }));
@@ -160,7 +157,6 @@ export function createProjectsRoutes(
         default_branch: project.gitBranch,
         status: project.status,
         created_at: project.createdAt,
-        deployment_id: project.deploymentId,
         ephemeral_url: project.ephemeralUrl,
         mcp_ephemeral_url: project.mcpEphemeralUrl,
       });
@@ -241,9 +237,9 @@ export function createProjectsRoutes(
         containerStatus = 'starting';
       } else if (project.status === 'failed') {
         containerStatus = 'error';
-      } else if (project.status === 'active' && project.deploymentId) {
+      } else if (project.status === 'active' && project.id) {
         try {
-          const status = await deploymentService.getProjectStatus(project.deploymentId);
+          const status = await deploymentService.getProjectStatus(project.id);
           containerStatus = status.containerStatus;
         } catch (error: any) {
           console.error('[Projects] Failed to get deployment status:', error.message);
@@ -330,13 +326,6 @@ export function createProjectsRoutes(
         return res.status(404).json({ error: 'Project not found' });
       }
 
-      if (!project.deploymentId) {
-        return res.status(400).json({
-          error: 'Cannot restart project',
-          message: 'Project has no deployment ID',
-        });
-      }
-
       if (!deploymentService.restartProject) {
         return res.status(400).json({
           error: 'Restart not supported',
@@ -344,7 +333,20 @@ export function createProjectsRoutes(
         });
       }
 
-      const deployment = await deploymentService.restartProject(project.deploymentId);
+      // Extract port from saved ephemeralUrl to reuse the same port
+      let savedPort: number | undefined;
+      if (project.ephemeralUrl) {
+        try {
+          const url = new URL(project.ephemeralUrl);
+          savedPort = parseInt(url.port, 10);
+          console.log(`[Projects] Restart: extracted saved port from DB: ${savedPort}`);
+        } catch (e) {
+          console.log(`[Projects] Restart: could not parse ephemeralUrl: ${project.ephemeralUrl}`);
+        }
+      }
+
+      // project.id (UUID) is used as folder name
+      const deployment = await deploymentService.restartProject(project.id, { savedPort });
 
       await dbService.updateProject(id, user.id, {
         ephemeralUrl: deployment.ephemeralUrl,
@@ -361,6 +363,121 @@ export function createProjectsRoutes(
       console.error('[Projects] Failed to restart project:', error);
       res.status(500).json({
         error: 'Failed to restart project',
+        message: error.message,
+      });
+    }
+  });
+
+  /**
+   * POST /api/projects/:id/ensure-running
+   * Check if dev server is running, auto-restart if disconnected
+   * Used when entering project detail page to ensure dev server is available
+   */
+  router.post('/:id/ensure-running', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const user = (req as any).user;
+
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const project = await dbService.getProject(id, user.id);
+
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      // If project is still initializing, just return current status
+      if (project.status === 'initializing') {
+        return res.json({
+          status: 'initializing',
+          message: 'Project is still initializing',
+          ephemeral_url: null,
+          mcp_ephemeral_url: null,
+          restarted: false,
+        });
+      }
+
+      // Check current container status
+      let containerStatus: 'running' | 'disconnected' | 'error' = 'disconnected';
+      try {
+        const statusResult = await deploymentService.getProjectStatus(project.id);
+        containerStatus = statusResult.containerStatus;
+      } catch (error: any) {
+        console.log('[Projects] Status check failed, assuming disconnected:', error.message);
+        containerStatus = 'disconnected';
+      }
+
+      // If already running, return current URLs
+      if (containerStatus === 'running') {
+        return res.json({
+          status: 'running',
+          message: 'Dev server is already running',
+          ephemeral_url: project.ephemeralUrl,
+          mcp_ephemeral_url: project.mcpEphemeralUrl,
+          restarted: false,
+        });
+      }
+
+      // Dev server is disconnected - try to restart
+      console.log(`[Projects] Dev server disconnected for ${id}, attempting restart...`);
+
+      if (!deploymentService.restartProject) {
+        return res.json({
+          status: 'disconnected',
+          message: 'Restart not supported by deployment adapter',
+          ephemeral_url: project.ephemeralUrl,
+          mcp_ephemeral_url: project.mcpEphemeralUrl,
+          restarted: false,
+        });
+      }
+
+      // Extract port from saved ephemeralUrl to reuse the same port
+      let savedPort: number | undefined;
+      if (project.ephemeralUrl) {
+        try {
+          const url = new URL(project.ephemeralUrl);
+          savedPort = parseInt(url.port, 10);
+          console.log(`[Projects] Extracted saved port from DB: ${savedPort}`);
+        } catch (e) {
+          console.log(`[Projects] Could not parse ephemeralUrl: ${project.ephemeralUrl}`);
+        }
+      }
+
+      try {
+        // project.id (UUID) is used as folder name
+        const deployment = await deploymentService.restartProject(project.id, { savedPort });
+
+        // Update DB with new URLs
+        await dbService.updateProject(id, user.id, {
+          ephemeralUrl: deployment.ephemeralUrl,
+          mcpEphemeralUrl: deployment.mcp.url,
+        });
+
+        console.log(`[Projects] Dev server restarted for ${id}`);
+
+        return res.json({
+          status: 'running',
+          message: 'Dev server was restarted',
+          ephemeral_url: deployment.ephemeralUrl,
+          mcp_ephemeral_url: deployment.mcp.url,
+          restarted: true,
+        });
+      } catch (restartError: any) {
+        console.error(`[Projects] Failed to restart dev server for ${id}:`, restartError);
+        return res.json({
+          status: 'error',
+          message: `Failed to restart: ${restartError.message}`,
+          ephemeral_url: project.ephemeralUrl,
+          mcp_ephemeral_url: project.mcpEphemeralUrl,
+          restarted: false,
+        });
+      }
+    } catch (error: any) {
+      console.error('[Projects] ensure-running error:', error);
+      res.status(500).json({
+        error: 'Failed to check/restart project',
         message: error.message,
       });
     }
@@ -390,9 +507,9 @@ export function createProjectsRoutes(
         return res.status(404).json({ error: 'Project not found' });
       }
 
-      if (name && updatedProject.deploymentId) {
+      if (name && updatedProject.id) {
         try {
-          await deploymentService.updateProject(updatedProject.deploymentId, { name });
+          await deploymentService.updateProject(updatedProject.id, { name });
         } catch (error: any) {
           console.error('[Projects] Failed to update deployment name:', error);
         }
@@ -406,7 +523,6 @@ export function createProjectsRoutes(
         default_branch: updatedProject.gitBranch,
         status: updatedProject.status,
         created_at: updatedProject.createdAt,
-        deployment_id: updatedProject.deploymentId,
         ephemeral_url: updatedProject.ephemeralUrl,
         mcp_ephemeral_url: updatedProject.mcpEphemeralUrl,
       });
@@ -438,15 +554,15 @@ export function createProjectsRoutes(
         return res.status(404).json({ error: 'Project not found' });
       }
 
-      if (project.deploymentId) {
+      if (project.id) {
         try {
-          await deploymentService.deleteProject(project.deploymentId);
+          await deploymentService.deleteProject(project.id);
         } catch (error: any) {
           console.error('[Projects] Failed to delete deployment (continuing):', error.message);
         }
       }
 
-      await mcpService.closeClient(project.deploymentId);
+      await mcpService.closeClient(project.id);
       await dbService.deleteProject(id, user.id);
 
       res.json({
@@ -488,10 +604,21 @@ export function createProjectsRoutes(
         });
       }
 
-      const tools = await mcpService.getTools(project.mcpEphemeralUrl);
+      const toolsRecord = await mcpService.getTools(project.mcpEphemeralUrl);
+
+      // Convert Record<string, Tool> to array format for frontend compatibility
+      // MCPClient.getTools() returns { main_toolName: { description, inputSchema, execute, ... } }
+      // Frontend expects: [{ name: 'toolName', description, inputSchema, ... }]
+      // Strip 'main_' prefix since we only have one server
+      const toolsArray = Object.entries(toolsRecord).map(([name, tool]: [string, any]) => ({
+        name: name.replace(/^main_/, ''), // Remove 'main_' prefix
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        _meta: tool._meta,
+      }));
 
       res.json({
-        tools,
+        tools: toolsArray,
         mcp_url: project.mcpEphemeralUrl,
       });
     } catch (error: any) {
@@ -699,7 +826,7 @@ export function createProjectsRoutes(
         return res.status(404).json({ error: 'Project not found' });
       }
 
-      const isLocal = project.deploymentId?.startsWith('local-');
+      const isLocal = project.id?.startsWith('local-');
 
       if (!isLocal) {
         return res.status(400).json({
@@ -712,7 +839,7 @@ export function createProjectsRoutes(
       const path = await import('path');
       const os = await import('os');
 
-      const projectDir = path.join(process.cwd(), '.chattable', project.deploymentId!);
+      const projectDir = path.join(process.cwd(), '.chattable', project.id!);
       const targetDir = path.join(projectDir, dirPath as string);
 
       // Security check
@@ -791,14 +918,14 @@ export function createProjectsRoutes(
         });
       }
 
-      const isLocal = project.deploymentId?.startsWith('local-');
+      const isLocal = project.id?.startsWith('local-');
 
       if (isLocal) {
         const { readFile } = await import('fs/promises');
         const path = await import('path');
         const os = await import('os');
 
-        const projectDir = path.join(process.cwd(), '.chattable', project.deploymentId!);
+        const projectDir = path.join(process.cwd(), '.chattable', project.id!);
         const fullPath = path.join(projectDir, filePath);
         const normalizedPath = path.normalize(fullPath);
         if (!normalizedPath.startsWith(path.normalize(projectDir))) {
@@ -1285,20 +1412,25 @@ export function createProjectsRoutes(
 
   /**
    * POST /api/projects/:projectId/chat
-   * Stream chat response using Mastra agent
+   * Stream chat response using Mastra agent with AI SDK format
+   *
+   * Request body (AI SDK useChat format):
+   * - messages: Array of { role: 'user' | 'assistant', content: string }
+   *
+   * Response: AI SDK UI Message Stream (Data Stream Protocol)
    */
   router.post('/:projectId/chat', async (req: Request, res: Response) => {
     try {
       const { projectId } = req.params;
-      const { message } = req.body;
+      const { messages } = req.body;
       const user = (req as any).user;
 
       if (!user) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      if (!message) {
-        return res.status(400).json({ error: 'Message is required' });
+      if (!messages || !Array.isArray(messages) || messages.length === 0) {
+        return res.status(400).json({ error: 'Messages array is required' });
       }
 
       // Get project to access MCP URL
@@ -1312,46 +1444,100 @@ export function createProjectsRoutes(
         return res.status(400).json({ error: 'Project MCP server not available' });
       }
 
-      // Note: Messages are now automatically saved by Mastra Memory
-      // No need to manually save to chatMessages table
+      // Retry helper for MCP connection during warmup
+      const getMcpToolsWithRetry = async (url: string, maxRetries = 5, initialDelay = 1000) => {
+        let lastError: any;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            console.log(`[Chat] Attempting MCP connection (${attempt}/${maxRetries})...`);
+            const tools = await mcpService.getTools(url);
+            console.log(`[Chat] MCP connection successful on attempt ${attempt}`);
+            return tools;
+          } catch (error: any) {
+            lastError = error;
+            const isConnectionError =
+              error.message?.includes('fetch failed') ||
+              error.message?.includes('Could not connect') ||
+              error.message?.includes('ECONNREFUSED') ||
+              error.code === 'ECONNREFUSED';
+
+            if (!isConnectionError || attempt === maxRetries) {
+              throw error;
+            }
+
+            const delay = initialDelay * attempt; // Linear backoff: 1s, 2s, 3s, 4s, 5s
+            console.log(`[Chat] MCP not ready, retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+        throw lastError;
+      };
 
       let mcpTools;
       try {
-        mcpTools = await mcpService.getTools(project.mcpEphemeralUrl);
+        mcpTools = await getMcpToolsWithRetry(project.mcpEphemeralUrl);
       } catch (error: any) {
-        console.error('[Chat] Failed to get MCP tools:', error);
-        // If MCP server is not ready (e.g. fetch failed), return 503 so client can retry
-        if (error.message.includes('fetch failed') || error.code === 'ECONNREFUSED') {
+        console.error('[Chat] Failed to get MCP tools after retries:', error);
+        if (error.message?.includes('fetch failed') || error.message?.includes('Could not connect') || error.code === 'ECONNREFUSED') {
           return res.status(503).json({
-            error: 'Project tools are initializing',
-            retryAfter: 2
+            error: 'Project tools are still initializing. Please try again in a few seconds.',
+            retryAfter: 5
           });
         }
         throw error;
       }
 
       const { MemoryService } = await import('../services/memory.service.js');
-      const { createCodeEditorAgent, streamCodeEditing } = await import('../mastra/agents/code-editor.js');
+      const { createCodeEditorAgent, streamCodeEditingAISdk } = await import('../mastra/agents/code-editor.js');
 
       const memory = await MemoryService.getMemory();
       const agent = createCodeEditorAgent(mcpTools, memory);
 
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('Transfer-Encoding', 'chunked');
-
       try {
-        let accumulatedResponse = '';
+        // Get AI SDK compatible Response
+        const aiResponse = await streamCodeEditingAISdk(
+          agent,
+          messages,
+          projectId,
+          user.id
+        );
 
-        // Stream with memory context (messages auto-saved by Mastra)
-        for await (const textChunk of streamCodeEditing(agent, message, projectId, user.id)) {
-          accumulatedResponse += textChunk;
-          res.write(textChunk);
+        // Copy headers from AI SDK Response to Express response
+        aiResponse.headers.forEach((value, key) => {
+          res.setHeader(key, value);
+        });
+
+        // Pipe the stream body to Express response
+        if (aiResponse.body) {
+          const reader = aiResponse.body.getReader();
+          const decoder = new TextDecoder();
+
+          const pump = async () => {
+            let totalBytes = 0;
+            let chunkCount = 0;
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                res.end();
+                console.log('[Chat] AI SDK stream completed, total bytes:', totalBytes, 'chunks:', chunkCount);
+                break;
+              }
+              chunkCount++;
+              totalBytes += value.length;
+
+              // Log ALL chunks to see what's coming through
+              const text = decoder.decode(value, { stream: true });
+              console.log(`[Chat] Chunk #${chunkCount}:`, text.substring(0, 500));
+
+              res.write(value);
+            }
+          };
+
+          await pump();
+        } else {
+          console.log('[Chat] No response body!');
+          res.end();
         }
-
-        res.end();
-        console.log('[Chat] Stream completed, response saved to Mastra Memory automatically');
       } catch (streamError: any) {
         console.error('[Chat] Stream error:', streamError);
         if (!res.headersSent) {

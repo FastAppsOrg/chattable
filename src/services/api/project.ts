@@ -3,7 +3,6 @@ import type {
   CreateProjectForm,
   ProjectUpdateForm,
   DeploymentConfig,
-  DeploymentResult,
   FileNode,
   SSHInfo,
   ProjectPreview,
@@ -108,7 +107,7 @@ export class ProjectService {
 
   /**
    * Wait for project sandbox to be ready
-   * Polls project status until deployment_id is available and status is "active"
+   * Polls project status until project_id is available and status is "active"
    */
   static async waitForProjectReady(
     projectId: string,
@@ -132,7 +131,7 @@ export class ProjectService {
         }
 
         // Check if project is ready
-        if (project.status === 'active' && project.deployment_id) {
+        if (project.status === 'active' && project.project_id) {
           return project
         }
 
@@ -261,6 +260,33 @@ export class ProjectService {
         throw error
       }
       throw new Error('Network error: Unable to restart project')
+    }
+  }
+
+  /**
+   * Ensure dev server is running for a project
+   * Checks status and auto-restarts if disconnected
+   * Should be called when entering project detail page
+   */
+  static async ensureDevServerRunning(projectId: string): Promise<{
+    status: 'running' | 'initializing' | 'disconnected' | 'error' | 'no_deployment'
+    message: string
+    ephemeral_url: string | null
+    mcp_ephemeral_url: string | null
+    restarted: boolean
+  }> {
+    try {
+      const response = await apiClient.post(`/api/projects/${projectId}/ensure-running`, {})
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to ensure dev server: ${response.status}`)
+      }
+      return response.json()
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error('Network error: Unable to ensure dev server running')
     }
   }
 

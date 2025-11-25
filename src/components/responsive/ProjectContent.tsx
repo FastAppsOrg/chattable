@@ -137,6 +137,50 @@ export function ProjectContent({ project, onBack, onProjectUpdate, githubUsernam
     }
   }, [projectId, projectStatus]) // Removed onProjectUpdate from dependencies
 
+  // Ensure dev server is running when entering project (for active projects)
+  // This handles the case where server was restarted and dev processes were lost
+  useEffect(() => {
+    // Only run for active projects (not initializing)
+    if (!projectId || projectStatus !== 'active') {
+      return
+    }
+
+    // Create unique key to prevent duplicate calls
+    const ensureKey = `${projectId}-ensure-running`
+    if (pollingRef.current === ensureKey) {
+      return
+    }
+
+    let cancelled = false
+    pollingRef.current = ensureKey
+
+    console.log('[ProjectContent] Checking if dev server is running for:', projectId)
+
+    ProjectService.ensureDevServerRunning(projectId)
+      .then((result) => {
+        if (cancelled) return
+        pollingRef.current = null
+
+        console.log('[ProjectContent] Dev server status:', result.status, result.message)
+
+        // If dev server was restarted, refresh project data to get new URLs
+        if (result.restarted && onProjectUpdateRef.current) {
+          console.log('[ProjectContent] Dev server was restarted, refreshing project data')
+          onProjectUpdateRef.current()
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return
+        pollingRef.current = null
+        console.error('[ProjectContent] Failed to ensure dev server running:', error)
+      })
+
+    return () => {
+      cancelled = true
+      pollingRef.current = null
+    }
+  }, [projectId, projectStatus])
+
   const handlePreviewConnect = () => {
     setPreviewCollapsed(false)
   }

@@ -70,10 +70,6 @@ const options: swaggerJsdoc.Options = {
               format: 'date-time',
               description: 'Project creation timestamp',
             },
-            deployment_id: {
-              type: 'string',
-              description: 'Local deployment ID',
-            },
             ephemeral_url: {
               type: 'string',
               description: 'Local dev server URL',

@@ -10,8 +10,7 @@ export interface Project {
   status: 'initializing' | 'active' | 'failed' | 'deleted'
   created_at: string
 
-  // Local deployment fields
-  deployment_id?: string // Local deployment ID
+  // Local deployment fields (deployment uses project_id as folder name)
   ephemeral_url?: string // Dev server URL
   mcp_ephemeral_url?: string // MCP server URL
 
@@ -38,15 +37,6 @@ export interface ProjectUpdateForm {
 export interface DeploymentConfig {
   domains: string[]
   env_vars?: Record<string, string>
-}
-
-/**
- * Deployment result
- */
-export interface DeploymentResult {
-  deployment_id: string
-  domains?: string[]
-  status: string
 }
 
 // ========== Legacy types (to be migrated) ==========

@@ -149,7 +149,7 @@ export function DevelopmentTab({ project }: DevelopmentTabProps) {
       try {
         // Validate JSON
         const parsed = JSON.parse(newValue)
-
+        
         // Update the resource's exampleOutput
         if (selectedResource) {
           const updatedResource = {
@@ -160,7 +160,7 @@ export function DevelopmentTab({ project }: DevelopmentTabProps) {
             },
           }
           setSelectedResource(updatedResource)
-
+          
           // Trigger widget reload
           setWidgetHtml('')
           setTimeout(() => {
@@ -328,213 +328,213 @@ export function DevelopmentTab({ project }: DevelopmentTabProps) {
             transition: 'flex 0.3s',
           }}
         >
-          <div
-            style={{
-              height: '100%',
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              padding: '16px 24px',
-              display: 'flex',
-              gap: '12px',
-            }}
-          >
-            {resources.map((resource, index) => {
-              const isSelected = selectedResource?.uri === resource.uri
-              return (
-                <div key={index} style={{ flex: isSelected ? '0 0 500px' : '0 0 220px', transition: 'flex 0.3s', height: '100%' }}>
-                  {isSelected ? (
-                    // Expanded: Unified card wrapper containing [Card | Info]
+        <div
+          style={{
+            height: '100%',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            padding: '16px 24px',
+            display: 'flex',
+            gap: '12px',
+          }}
+        >
+          {resources.map((resource, index) => {
+            const isSelected = selectedResource?.uri === resource.uri
+            return (
+              <div key={index} style={{ flex: isSelected ? '0 0 500px' : '0 0 220px', transition: 'flex 0.3s', height: '100%' }}>
+                {isSelected ? (
+                  // Expanded: Unified card wrapper containing [Card | Info]
+                  <div
+                    onClick={() => setIsLayer2Focused(true)}
+                    style={{
+                      height: '100%',
+                      backgroundColor: 'var(--color-bg-secondary)',
+                      border: '2px solid var(--color-primary)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      display: 'flex',
+                      gap: '12px',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {/* Left: Original Card Content (without wrapper) */}
                     <div
-                      onClick={() => setIsLayer2Focused(true)}
                       style={{
-                        height: '100%',
-                        backgroundColor: 'var(--color-bg-secondary)',
-                        border: '2px solid var(--color-primary)',
-                        borderRadius: '8px',
-                        padding: '12px',
+                        flex: '0 0 196px', // 220px - 24px padding
                         display: 'flex',
-                        gap: '12px',
-                        overflow: 'hidden',
-                        cursor: 'pointer',
+                        flexDirection: 'column',
+                        overflow: 'auto',
                       }}
                     >
-                      {/* Left: Original Card Content (without wrapper) */}
+                      {/* Widget Name */}
                       <div
                         style={{
-                          flex: '0 0 196px', // 220px - 24px padding
-                          display: 'flex',
-                          flexDirection: 'column',
-                          overflow: 'auto',
+                          fontSize: '15px',
+                          fontWeight: 600,
+                          color: 'var(--color-text-primary)',
+                          marginBottom: '6px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        {/* Widget Name */}
-                        <div
-                          style={{
-                            fontSize: '15px',
-                            fontWeight: 600,
-                            color: 'var(--color-text-primary)',
-                            marginBottom: '6px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          🎨 {resource.name || resource.uri.split('/').pop()?.replace('.html', '') || 'widget'}
-                        </div>
-
-                        {/* Description */}
-                        {resource.description && (
-                          <div
-                            style={{
-                              fontSize: '13px',
-                              color: 'var(--color-text-secondary)',
-                              lineHeight: '1.5',
-                              overflow: 'auto',
-                              flex: 1,
-                              marginBottom: '6px',
-                            }}
-                          >
-                            {resource.description}
-                          </div>
-                        )}
-
-                        {/* URI */}
-                        <div
-                          style={{
-                            fontSize: '11px',
-                            color: 'var(--color-text-tertiary)',
-                            fontFamily: 'monospace',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {resource.uri}
-                        </div>
-
-                        {/* MIME Type badge */}
-                        {resource.mimeType && (
-                          <div
-                            style={{
-                              marginTop: '6px',
-                              fontSize: '10px',
-                              color: 'var(--color-primary)',
-                              backgroundColor: 'var(--color-bg-primary)',
-                              padding: '3px 6px',
-                              borderRadius: '4px',
-                              display: 'inline-block',
-                              alignSelf: 'flex-start',
-                            }}
-                          >
-                            {resource.mimeType}
-                          </div>
-                        )}
+                        🎨 {resource.name || resource.uri.split('/').pop()?.replace('.html', '') || 'widget'}
                       </div>
 
-                      {/* Divider */}
-                      <div style={{ width: '1px', backgroundColor: 'var(--color-border-subtle)' }} />
+                      {/* Description */}
+                      {resource.description && (
+                        <div
+                          style={{
+                            fontSize: '13px',
+                            color: 'var(--color-text-secondary)',
+                            lineHeight: '1.5',
+                            overflow: 'auto',
+                            flex: 1,
+                            marginBottom: '6px',
+                          }}
+                        >
+                          {resource.description}
+                        </div>
+                      )}
 
-                      {/* Right: Example Tool Output (JSON Editor) */}
+                      {/* URI */}
                       <div
+                        style={{
+                          fontSize: '11px',
+                          color: 'var(--color-text-tertiary)',
+                          fontFamily: 'monospace',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {resource.uri}
+                      </div>
+
+                      {/* MIME Type badge */}
+                      {resource.mimeType && (
+                        <div
+                          style={{
+                            marginTop: '6px',
+                            fontSize: '10px',
+                            color: 'var(--color-primary)',
+                            backgroundColor: 'var(--color-bg-primary)',
+                            padding: '3px 6px',
+                            borderRadius: '4px',
+                            display: 'inline-block',
+                            alignSelf: 'flex-start',
+                          }}
+                        >
+                          {resource.mimeType}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Divider */}
+                    <div style={{ width: '1px', backgroundColor: 'var(--color-border-subtle)' }} />
+                    
+                    {/* Right: Example Tool Output (JSON Editor) */}
+                    <div
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '8px' }}>
+                        Example Tool Output
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', marginBottom: '8px' }}>
+                        Edit JSON to customize widget preview
+                      </div>
+                      
+                      {/* JSON Editor */}
+                      <textarea
+                        value={editedOutput}
+                        onChange={(e) => handleOutputChange(e.target.value)}
                         style={{
                           flex: 1,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          overflow: 'hidden',
+                          padding: '10px',
+                          backgroundColor: 'var(--color-bg-tertiary)',
+                          border: '1px solid var(--color-border-subtle)',
+                          borderRadius: '6px',
+                          color: 'var(--color-text-primary)',
+                          fontFamily: 'monospace',
+                          fontSize: '11px',
+                          lineHeight: '1.5',
+                          resize: 'none',
+                          outline: 'none',
                         }}
-                      >
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '8px' }}>
-                          Example Tool Output
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--color-text-tertiary)', marginBottom: '8px' }}>
-                          Edit JSON to customize widget preview
-                        </div>
-
-                        {/* JSON Editor */}
-                        <textarea
-                          value={editedOutput}
-                          onChange={(e) => handleOutputChange(e.target.value)}
+                        spellCheck={false}
+                      />
+                      
+                      {/* Error message */}
+                      {outputError && (
+                        <div
                           style={{
-                            flex: 1,
-                            padding: '10px',
-                            backgroundColor: 'var(--color-bg-tertiary)',
-                            border: '1px solid var(--color-border-subtle)',
+                            padding: '8px',
+                            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                            border: '1px solid rgba(220, 38, 38, 0.3)',
                             borderRadius: '6px',
-                            color: 'var(--color-text-primary)',
-                            fontFamily: 'monospace',
-                            fontSize: '11px',
-                            lineHeight: '1.5',
-                            resize: 'none',
-                            outline: 'none',
-                          }}
-                          spellCheck={false}
-                        />
-
-                        {/* Error message */}
-                        {outputError && (
-                          <div
-                            style={{
-                              padding: '8px',
-                              backgroundColor: 'rgba(220, 38, 38, 0.1)',
-                              border: '1px solid rgba(220, 38, 38, 0.3)',
-                              borderRadius: '6px',
-                              color: 'var(--color-error)',
-                              fontSize: '10px',
-                              marginTop: '8px',
-                            }}
-                          >
-                            {outputError}
-                          </div>
-                        )}
-
-                        {/* Apply button (manual trigger, bypasses debounce) */}
-                        <button
-                          onClick={() => {
-                            // Clear debounce timer
-                            if (debounceTimerRef.current) {
-                              clearTimeout(debounceTimerRef.current)
-                            }
-                            // Manually trigger the apply logic immediately
-                            handleOutputChange(editedOutput)
-                          }}
-                          style={{
-                            width: '100%',
-                            padding: '8px 14px',
-                            backgroundColor: 'var(--color-primary)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            marginTop: '10px',
+                            color: 'var(--color-error)',
+                            fontSize: '10px',
+                            marginTop: '8px',
                           }}
                         >
-                          Apply Changes
-                        </button>
-                      </div>
+                          {outputError}
+                        </div>
+                      )}
+                      
+                      {/* Apply button (manual trigger, bypasses debounce) */}
+                      <button
+                        onClick={() => {
+                          // Clear debounce timer
+                          if (debounceTimerRef.current) {
+                            clearTimeout(debounceTimerRef.current)
+                          }
+                          // Manually trigger the apply logic immediately
+                          handleOutputChange(editedOutput)
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 14px',
+                          backgroundColor: 'var(--color-primary)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          marginTop: '10px',
+                        }}
+                      >
+                        Apply Changes
+                      </button>
                     </div>
-                  ) : (
-                    // Normal card
-                    <WidgetResourceCard
-                      resource={resource}
-                      selected={false}
-                      onClick={() => {
-                        setSelectedResource(resource)
-                        setIsLayer2Focused(true) // Focus Layer 2 when card clicked
-                      }}
-                    />
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                  </div>
+                ) : (
+                  // Normal card
+                  <WidgetResourceCard
+                    resource={resource}
+                    selected={false}
+                    onClick={() => {
+                      setSelectedResource(resource)
+                      setIsLayer2Focused(true) // Focus Layer 2 when card clicked
+                    }}
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
         </div>
       )}
 
       {/* Layer 3: Widget Preview */}
       {selectedResource && (
-        <div
+        <div 
           style={{ flex: '1', overflow: 'hidden', padding: '24px' }}
           onClick={() => setIsLayer2Focused(false)}
         >

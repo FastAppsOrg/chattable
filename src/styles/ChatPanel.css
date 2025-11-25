@@ -978,3 +978,79 @@
     max-height: 50vh; /* Limit input container height on small screens */
   }
 }
+
+/* AI SDK v5 - Tool Invocation Styles */
+.message-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tool-invocation {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(64, 224, 208, 0.05);
+  border-left: 3px solid var(--color-info);
+  padding: 10px 12px;
+  border-radius: 6px;
+}
+
+.tool-invocation .tool-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-invocation .tool-name {
+  font-weight: var(--font-weight-medium);
+  color: #00ffcc;
+  text-transform: uppercase;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.tool-invocation .tool-state {
+  font-weight: normal;
+  color: var(--color-text-secondary);
+  text-transform: none;
+  font-size: 10px;
+}
+
+.tool-invocation .tool-input {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.tool-invocation .tool-input code {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+/* AI SDK v5 - Reasoning/Thinking Styles */
+.message-reasoning {
+  background: rgba(168, 85, 247, 0.08);
+  border-left: 3px solid #a855f7;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.reasoning-header {
+  font-weight: var(--font-weight-medium);
+  color: #a855f7;
+  font-size: 11px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.reasoning-content {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

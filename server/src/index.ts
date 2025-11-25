@@ -11,6 +11,7 @@ import { createSecretsRoutes } from './routes/secrets.routes.js';
 import { createAuthRoutes } from './routes/auth.routes.js';
 import { createGitHubRoutes } from './routes/github.routes.js';
 import { createGitRoutes } from './routes/git.routes.js';
+// Removed test stream routes - no longer needed
 // import { createDevRoutes } from './routes/dev.routes.js';
 import { LocalDeploymentAdapter } from './services/deployment/local.adapter.js';
 import { dbService } from './db/db.service.js';
@@ -95,6 +96,8 @@ app.use('/github', authMiddleware, createGitHubRoutes());
 
 // Mastra routes - auth middleware applied for project updates
 app.use('/api/mastra', authMiddleware, mastraRoutes);
+
+// Removed test stream routes - no longer needed
 
 // Development routes (no auth required for local dev)
 // app.use('/api/dev', createDevRoutes());

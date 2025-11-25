@@ -78,6 +78,9 @@ export interface IDeploymentService {
   /**
    * Restart a project (for recovery after server restart)
    * Optional - only needed for adapters that support process recovery
+   * @param projectId - The project UUID (used as folder name)
+   * @param options - Optional restart options
+   * @param options.savedPort - Port from DB to reuse (avoids port changes on restart)
    */
-  restartProject?(projectId: string): Promise<DeploymentProject>;
+  restartProject?(projectId: string, options?: { savedPort?: number }): Promise<DeploymentProject>;
 }

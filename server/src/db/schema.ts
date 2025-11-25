@@ -8,7 +8,7 @@ export const projects = sqliteTable('projects', {
   name: text('name'),
   description: text('description'),
 
-  deploymentId: text('deployment_id').notNull().unique(),
+  // deploymentId removed - use id (UUID) as folder name directly
   gitUrl: text('git_url'),
   gitBranch: text('git_branch').default('main'),
 
