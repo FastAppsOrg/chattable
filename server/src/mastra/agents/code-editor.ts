@@ -2,8 +2,7 @@ import { Agent } from '@mastra/core/agent'
 import { openai } from '@ai-sdk/openai'
 import type { Memory } from '@mastra/memory'
 import type { CoreMessage } from 'ai'
-import { createUIMessageStream, createUIMessageStreamResponse, convertToModelMessages } from 'ai'
-import { toAISdkFormat } from '@mastra/ai-sdk'
+import { convertToModelMessages } from 'ai'
 
 /**
  * Code Editor Agent with MCP tools and Memory
@@ -42,7 +41,7 @@ Your role is to help users build Apps in ChatGPT by editing code, adding feature
 4. **Ask Clarifying Questions**: If requirements are unclear, ask before making changes
 5. **Follow Best Practices**: Write clean, maintainable, well-documented code
 6. **Use Context**: Reference previous conversations when relevant`,
-    model: openai('gpt-5-mini'),
+    model: openai('gpt-4o-mini'),
     tools: mcpTools,
     memory: memory,
   })
@@ -75,39 +74,26 @@ export async function streamCodeEditingAISdk(
     // See: https://github.com/mastra-ai/mastra/issues/7823
     const modelMessages = convertToModelMessages(messages as any)
 
-    // Use native Mastra stream + toAISdkFormat for proper tool execution
+    // Use Mastra stream with format: 'aisdk' for proper AI SDK v5 compatibility
+    // This ensures reasoning items are properly preserved in conversation history
     // maxSteps: 10 allows multi-step tool execution
     const result = await agent.stream(modelMessages, {
       maxSteps: 10,
+      format: 'aisdk',
       memory: {
         thread: threadId,
         resource: resourceId,
       },
     })
 
-    // Get last assistant message ID for proper message continuation
-    let lastMessageId: string | undefined
-    if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
-      lastMessageId = (messages[messages.length - 1] as any).id
-    }
-
-    // Transform Mastra stream to AI SDK UI Message format
-    const uiMessageStream = createUIMessageStream({
-      execute: async ({ writer }) => {
-        for await (const part of toAISdkFormat(result, {
-          from: 'agent',
-          lastMessageId,
-          sendStart: true,
-          sendFinish: true,
-          sendReasoning: true,
-          sendSources: true,
-        })) {
-          writer.write(part)
-        }
-      },
+    // Use built-in toUIMessageStreamResponse for proper AI SDK UI stream format
+    // This handles reasoning items, tool calls, and message parts correctly
+    return result.toUIMessageStreamResponse({
+      sendReasoning: true,
+      sendSources: true,
+      sendStart: true,
+      sendFinish: true,
     })
-
-    return createUIMessageStreamResponse({ stream: uiMessageStream })
   } catch (error: any) {
     console.error('[Code Editor] Error during streaming:', error.message)
     console.error('[Code Editor] Error stack:', error.stack)

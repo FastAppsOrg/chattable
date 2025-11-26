@@ -184,8 +184,10 @@ export const TextPart = memo(function TextPart({ text, status }: TextMessagePart
 
   if (!text) return null
 
+  // Note: Don't use 'typing' class - it has display:flex which breaks markdown layout
+  // The 'typing' class was designed for loading indicators, not streaming text
   return (
-    <div className={isStreaming ? "message-content typing" : "message-content"}>
+    <div className={`message-content${isStreaming ? ' streaming' : ''}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
