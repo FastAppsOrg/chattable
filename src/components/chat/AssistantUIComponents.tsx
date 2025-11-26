@@ -21,14 +21,132 @@ import type {
 import { getToolIcon } from '../../utils/formatters'
 
 // =============================================================================
+// Helper: Smart JSON Formatter
+// =============================================================================
+/**
+ * Intelligently formats JSON data for display, handling:
+ * - Nested JSON strings (parses and formats them)
+ * - Escaped characters (\n, \t, etc.)
+ * - Deep nesting
+ */
+function formatToolData(data: any): string {
+  if (data === null || data === undefined) return 'null'
+  
+  // If it's already a string, check if it's JSON
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data)
+      return JSON.stringify(parsed, null, 2)
+    } catch {
+      // Not JSON, return as-is
+      return data
+    }
+  }
+
+  // Handle objects/arrays - check for nested JSON strings
+  const processValue = (value: any): any => {
+    if (typeof value === 'string') {
+      // Try to parse as JSON
+      try {
+        const parsed = JSON.parse(value)
+        // If successful and it's an object/array, return parsed version
+        if (typeof parsed === 'object' && parsed !== null) {
+          return parsed
+        }
+      } catch {
+        // Not JSON, return original
+      }
+    } else if (Array.isArray(value)) {
+      return value.map(processValue)
+    } else if (typeof value === 'object' && value !== null) {
+      const processed: any = {}
+      for (const [k, v] of Object.entries(value)) {
+        processed[k] = processValue(v)
+      }
+      return processed
+    }
+    return value
+  }
+
+  try {
+    const processed = processValue(data)
+    return JSON.stringify(processed, null, 2)
+  } catch {
+    return String(data)
+  }
+}
+
+// =============================================================================
+// Expandable Section Component
+// =============================================================================
+const ExpandableSection = memo(function ExpandableSection({
+  title,
+  content,
+  variant = 'default',
+  defaultExpanded = true
+}: {
+  title: string
+  content: string
+  variant?: 'input' | 'output' | 'default'
+  defaultExpanded?: boolean
+}) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+  const { theme } = useTheme()
+
+  if (!content) return null
+
+  const variantClass = variant === 'input' ? 'input' : variant === 'output' ? 'output' : ''
+
+  return (
+    <div className={`tool-expandable-section ${variantClass}`}>
+      <button
+        className="tool-expandable-header"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        <span className="tool-expandable-title">{title}</span>
+        {!isExpanded && (
+          <span className="tool-expandable-preview">
+            {content.substring(0, 50)}{content.length > 50 ? '...' : ''}
+          </span>
+        )}
+      </button>
+      {isExpanded && (
+        <div className="tool-expandable-content">
+          <SyntaxHighlighter
+            language="json"
+            style={theme === 'light' ? oneLight : vscDarkPlus}
+            customStyle={{
+              margin: 0,
+              padding: '12px',
+              background: 'transparent',
+              fontSize: '13px',
+              lineHeight: '1.5',
+            }}
+            codeTagProps={{
+              style: {
+                fontFamily: 'var(--font-mono)',
+              }
+            }}
+          >
+            {content}
+          </SyntaxHighlighter>
+        </div>
+      )}
+    </div>
+  )
+})
+
+// =============================================================================
 // Reasoning Component - Shows AI thinking process with auto-collapse
 // =============================================================================
-export const ReasoningPart = memo(function ReasoningPart({
-  reasoning,
-  status,
-}: ReasoningMessagePartProps) {
+export const ReasoningPart = memo(function ReasoningPart(props: ReasoningMessagePartProps) {
   const [isExpanded, setIsExpanded] = useState(true)
-  const isStreaming = status === 'streaming'
+  const status = props.status
+  const isStreaming = status.type === 'running'
+  
+  // Extract reasoning from props - assistant-ui may structure this differently
+  const reasoning = (props as any).reasoning || (props as any).part?.reasoning || ''
 
   if (!reasoning && !isStreaming) return null
 
@@ -62,7 +180,7 @@ export const ReasoningPart = memo(function ReasoningPart({
 // =============================================================================
 export const TextPart = memo(function TextPart({ text, status }: TextMessagePartProps) {
   const { theme } = useTheme()
-  const isStreaming = status === 'streaming'
+  const isStreaming = status.type === 'running'
 
   if (!text) return null
 
@@ -107,7 +225,7 @@ export const ToolPart = memo(function ToolPart({
 }: ToolCallMessagePartProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const toolIcon = getToolIcon(toolName)
-  const isRunning = status === 'streaming' || status === 'requires-action'
+  const isRunning = status.type === 'running' || status.type === 'incomplete'
 
   // Get summary for tool header
   const getSummary = () => {
@@ -157,8 +275,8 @@ export const ToolPart = memo(function ToolPart({
   }
 
   const summary = getSummary()
-  const inputFormatted = args ? JSON.stringify(args, null, 2) : null
-  const outputFormatted = result ? JSON.stringify(result, null, 2) : null
+  const inputFormatted = args ? formatToolData(args) : null
+  const outputFormatted = result ? formatToolData(result) : null
 
   return (
     <div className={`tool-invocation ${isRunning ? 'running' : 'completed'} ${isExpanded ? 'expanded' : ''}`}>
@@ -181,20 +299,20 @@ export const ToolPart = memo(function ToolPart({
       {isExpanded && (
         <div className="tool-body">
           {inputFormatted && (
-            <div className="tool-expandable-section input">
-              <div className="tool-expandable-title">Input</div>
-              <div className="tool-expandable-content">
-                <pre><code>{inputFormatted}</code></pre>
-              </div>
-            </div>
+            <ExpandableSection
+              title="Input"
+              content={inputFormatted}
+              variant="input"
+              defaultExpanded={true}
+            />
           )}
           {outputFormatted && (
-            <div className="tool-expandable-section output">
-              <div className="tool-expandable-title">Output</div>
-              <div className="tool-expandable-content">
-                <pre><code>{outputFormatted}</code></pre>
-              </div>
-            </div>
+            <ExpandableSection
+              title="Output"
+              content={outputFormatted}
+              variant="output"
+              defaultExpanded={true}
+            />
           )}
           {isRunning && (
             <div className="tool-running-indicator">

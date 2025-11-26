@@ -2,7 +2,7 @@ import { Agent } from '@mastra/core/agent'
 import { openai } from '@ai-sdk/openai'
 import type { Memory } from '@mastra/memory'
 import type { CoreMessage } from 'ai'
-import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
+import { createUIMessageStream, createUIMessageStreamResponse, convertToModelMessages } from 'ai'
 import { toAISdkFormat } from '@mastra/ai-sdk'
 
 /**
@@ -70,9 +70,14 @@ export async function streamCodeEditingAISdk(
   console.log('[Code Editor] Resource ID:', resourceId)
 
   try {
+    // Convert messages to proper model format to handle reasoning items
+    // This fixes the issue where Memory doesn't preserve reasoning items for gpt-5-mini
+    // See: https://github.com/mastra-ai/mastra/issues/7823
+    const modelMessages = convertToModelMessages(messages as any)
+
     // Use native Mastra stream + toAISdkFormat for proper tool execution
     // maxSteps: 10 allows multi-step tool execution
-    const result = await agent.stream(messages, {
+    const result = await agent.stream(modelMessages, {
       maxSteps: 10,
       memory: {
         thread: threadId,

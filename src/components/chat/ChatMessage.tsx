@@ -9,16 +9,48 @@ import { getToolIcon } from '../../utils/formatters'
 import { useTheme } from '../../hooks/useTheme'
 
 // Helper to format JSON with syntax highlighting hints
-function formatJsonDisplay(data: any, maxLines = 20): string {
+function formatJsonDisplay(data: any): string {
   if (data === null || data === undefined) return 'null'
-  if (typeof data === 'string') return data
-  try {
-    const formatted = JSON.stringify(data, null, 2)
-    const lines = formatted.split('\n')
-    if (lines.length > maxLines) {
-      return lines.slice(0, maxLines).join('\n') + `\n... (${lines.length - maxLines} more lines)`
+  
+  // If it's already a string, check if it's JSON
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data)
+      return JSON.stringify(parsed, null, 2)
+    } catch {
+      // Not JSON, return as-is
+      return data
     }
-    return formatted
+  }
+
+  // Handle objects/arrays - check for nested JSON strings
+  const processValue = (value: any): any => {
+    if (typeof value === 'string') {
+      // Try to parse as JSON
+      try {
+        const parsed = JSON.parse(value)
+        // If successful and it's an object/array, return parsed version
+        if (typeof parsed === 'object' && parsed !== null) {
+          return parsed
+        }
+      } catch {
+        // Not JSON, return original
+      }
+    } else if (Array.isArray(value)) {
+      return value.map(processValue)
+    } else if (typeof value === 'object' && value !== null) {
+      const processed: any = {}
+      for (const [k, v] of Object.entries(value)) {
+        processed[k] = processValue(v)
+      }
+      return processed
+    }
+    return value
+  }
+
+  try {
+    const processed = processValue(data)
+    return JSON.stringify(processed, null, 2)
   } catch {
     return String(data)
   }
@@ -42,9 +74,10 @@ function getToolSummary(toolName: string, args: any): string {
     case 'WebFetch':
     case 'WebSearch':
       return args.url || args.query || ''
-    case 'TodoWrite':
+    case 'TodoWrite': {
       const count = args.todos?.length || 0
       return `${count} task${count !== 1 ? 's' : ''}`
+    }
     default:
       if (args.description) return args.description
       return ''
@@ -64,6 +97,7 @@ function ExpandableSection({
   variant?: 'input' | 'output' | 'default'
 }) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+  const { theme } = useTheme()
 
   if (!content) return null
 
@@ -85,7 +119,24 @@ function ExpandableSection({
       </button>
       {isExpanded && (
         <div className="tool-expandable-content">
-          <pre><code>{content}</code></pre>
+          <SyntaxHighlighter
+            language="json"
+            style={theme === 'light' ? oneLight : vscDarkPlus}
+            customStyle={{
+              margin: 0,
+              padding: '12px',
+              background: 'transparent',
+              fontSize: '13px',
+              lineHeight: '1.5',
+            }}
+            codeTagProps={{
+              style: {
+                fontFamily: 'var(--font-mono)',
+              }
+            }}
+          >
+            {content}
+          </SyntaxHighlighter>
         </div>
       )}
     </div>

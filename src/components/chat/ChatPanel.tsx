@@ -69,22 +69,11 @@ export function ChatPanel({
   }, [currentProjectId])
 
   // AI SDK useChat hook with memoized DefaultChatTransport
-  const {
-    messages,
-    status,
-    error,
-    sendMessage,
-    setMessages,
-    stop,
-  } = useChat({
+  // This will be passed to useAISDKRuntime later
+  const chatHelpers = useChat({
     transport: chatTransport!,
     onResponse: (response) => {
       console.log('[ChatPanel] Stream response:', response.status)
-    },
-    onStream: ({ delta, snapshot }) => {
-      // Debug: Log each streaming event to verify chunks are arriving incrementally
-      console.log('[ChatPanel] Stream delta:', delta)
-      console.log('[ChatPanel] Stream snapshot parts:', snapshot?.parts?.length, snapshot?.parts?.slice(-1))
     },
     onFinish: (message) => {
       console.log('[ChatPanel] Stream finished:', message.id)
@@ -100,18 +89,9 @@ export function ChatPanel({
     },
   })
 
+  // Destructure for local use
+  const { messages, status, sendMessage, setMessages } = chatHelpers
   const isLoading = status === 'streaming' || status === 'submitted'
-
-  // Debug: Monitor message updates during streaming
-  useEffect(() => {
-    if (status === 'streaming' && messages.length > 0) {
-      const lastMsg = messages[messages.length - 1]
-      // Log the actual structure of parts to understand what AI SDK is sending
-      console.log('[ChatPanel] Last message parts:', JSON.stringify(lastMsg.parts, null, 2))
-      console.log('[ChatPanel] Last message content:', lastMsg.content)
-      console.log('[ChatPanel] Full last message:', lastMsg)
-    }
-  }, [messages, status])
 
   // Poll for project title generation
   const pollProjectTitle = useCallback(async () => {
@@ -453,22 +433,23 @@ export function ChatPanel({
     inputRef.current?.focus()
   }, [])
 
-  // Create assistant-ui runtime from AI SDK useChat
-  const chat = useMemo(() => ({
-    messages,
-    status,
-    error,
-    sendMessage,
-    setMessages,
-    stop,
-  }), [messages, status, error, sendMessage, setMessages, stop])
-
-  const runtime = useAISDKRuntime(chat)
+  // Create assistant-ui runtime from AI SDK useChat (chatHelpers defined above)
+  const runtime = useAISDKRuntime(chatHelpers)
 
   // Auto-scroll when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Auto-scroll to bottom when history is loaded or component mounts
+  useEffect(() => {
+    if (historyLoaded && messages.length > 0) {
+      // Use setTimeout to ensure DOM has rendered
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' })
+      }, 100)
+    }
+  }, [historyLoaded, messages.length])
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
