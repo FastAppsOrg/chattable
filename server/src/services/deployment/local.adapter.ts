@@ -1,9 +1,8 @@
 import { spawn, ChildProcess } from 'child_process';
 import { promisify } from 'util';
 import { exec as execCallback } from 'child_process';
-import { mkdir, rm, readFile, writeFile } from 'fs/promises';
+import { mkdir, rm, cp } from 'fs/promises';
 import path from 'path';
-import os from 'os';
 import { createServer } from 'net';
 import { EventEmitter } from 'events';
 import {
@@ -35,11 +34,13 @@ export interface ProgressEvent {
 
 export class LocalDeploymentAdapter implements IDeploymentService {
   private projectsDir: string;
+  private templateDir: string;
   private runningProcesses = new Map<string, ProcessInfo>();
   public progressEmitter = new EventEmitter();
 
   constructor() {
     this.projectsDir = path.join(process.cwd(), '.chattable');
+    this.templateDir = path.join(process.cwd(), 'template');
   }
 
   private emitProgress(event: ProgressEvent) {
@@ -73,70 +74,29 @@ export class LocalDeploymentAdapter implements IDeploymentService {
       });
       await mkdir(projectDir, { recursive: true });
 
-      // Fixed template URL as requested
-      const gitUrl = 'https://github.com/Jhvictor4/apps-sdk-template';
-      console.log(`[Local] Cloning ${gitUrl}...`);
+      // Copy template from local template/ folder (no network required)
+      console.log(`[Local] Copying template from ${this.templateDir}...`);
 
-      // Emit clone start event
+      // Emit copy start event
       this.emitProgress({
         projectId: progressId,
         step: 'clone',
-        message: 'Cloning repository...',
+        message: 'Copying template...',
         progress: 20,
       });
 
       // Check if directory is empty
       const files = await execAsync('ls -A', { cwd: projectDir }).catch(() => ({ stdout: '' }));
       if (files.stdout.trim()) {
-        console.log(`[Local] Directory not empty, skipping clone...`);
+        console.log(`[Local] Directory not empty, skipping copy...`);
       } else {
-        await execAsync(`git clone ${gitUrl} .`, { cwd: projectDir });
+        // Copy template folder recursively (Node.js 16.7+ native)
+        await cp(this.templateDir, projectDir, { recursive: true });
+        console.log(`[Local] Template copied successfully`);
 
-        // Patch template to use PORT environment variable and add CSP
-        console.log(`[Local] Patching template for PORT and CSP...`);
-        try {
-          const serverIndexPath = path.join(projectDir, 'server/src/index.ts');
-          let serverCode = await readFile(serverIndexPath, 'utf-8');
-
-          // Define the port variable at the top
-          const portVarDeclaration = 'const PORT = Number(process.env.PORT) || 3000;\n\n';
-
-          // Add PORT variable before app.listen (look for "app.listen" and insert before it)
-          serverCode = serverCode.replace(
-            /(app\.listen\()/,
-            portVarDeclaration + '$1'
-          );
-
-          // Replace app.listen(3000, with app.listen(PORT,
-          serverCode = serverCode.replace(
-            /app\.listen\(3000,/g,
-            'app.listen(PORT,'
-          );
-
-          // Replace hardcoded port 3000 in console.log messages
-          serverCode = serverCode.replace(
-            /port 3000/g,
-            `port \${PORT}`
-          );
-          serverCode = serverCode.replace(
-            /localhost:3000/g,
-            `localhost:\${PORT}`
-          );
-
-          // Add CSP headers - insert after express.json() middleware
-          const cspMiddleware = `\n// CSP headers for security\napp.use((req, res, next) => {\n  res.setHeader(\n    'Content-Security-Policy',\n    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'"\n  );\n  next();\n});\n\n`;
-
-          // Insert CSP middleware after app.use(express.json())
-          serverCode = serverCode.replace(
-            /(app\.use\(express\.json\(\)\))/,
-            '$1' + cspMiddleware
-          );
-
-          await writeFile(serverIndexPath, serverCode);
-          console.log(`[Local] Successfully patched template (PORT + CSP)`);
-        } catch (error: any) {
-          console.warn(`[Local] Could not patch template:`, error.message);
-        }
+        // Initialize git repo for the new project
+        await execAsync('git init', { cwd: projectDir });
+        console.log(`[Local] Git repository initialized`);
       }
 
       console.log(`[Local] Installing dependencies...`);
@@ -167,41 +127,6 @@ export class LocalDeploymentAdapter implements IDeploymentService {
         await execAsync('npm install', { cwd: projectDir });
       }
 
-      // Patch skybridge in node_modules to respect PORT
-      // This is a workaround for the hardcoded localhost:3000 in skybridge
-      try {
-        console.log(`[Local] Patching skybridge in node_modules...`);
-
-        // Determine where node_modules is (root or server/)
-        let skybridgePath = path.join(projectDir, 'node_modules/skybridge/dist/src/server/server.js');
-
-        // Check if file exists, if not check server/node_modules (monorepo case)
-        try {
-          await readFile(skybridgePath);
-        } catch {
-          skybridgePath = path.join(projectDir, 'server/node_modules/skybridge/dist/src/server/server.js');
-        }
-
-        let skybridgeCode = await readFile(skybridgePath, 'utf-8');
-
-        // Replace hardcoded localhost:3000 with dynamic port
-        // Original: : `http://localhost:3000`;
-        // New: : `http://localhost:${process.env.PORT || 3000}`;
-        if (skybridgeCode.includes('`http://localhost:3000`')) {
-          skybridgeCode = skybridgeCode.replace(
-            '`http://localhost:3000`',
-            '`http://localhost:${process.env.PORT || 3000}`'
-          );
-          await writeFile(skybridgePath, skybridgeCode);
-          console.log(`[Local] Successfully patched skybridge at ${skybridgePath}`);
-        } else {
-          console.log(`[Local] Skybridge already patched or pattern not found`);
-        }
-      } catch (error: any) {
-        console.warn(`[Local] Failed to patch skybridge:`, error.message);
-        // Don't fail the whole process, just warn
-      }
-
       const devPort = await this.findAvailablePort(40000);
 
       console.log(`[Local] Dev server will run on port ${devPort}`);
@@ -214,18 +139,8 @@ export class LocalDeploymentAdapter implements IDeploymentService {
         progress: 80,
       });
 
-      let devCwd = projectDir;
-      const hasServerDir = await execAsync('test -d server && echo "yes" || echo "no"', { cwd: projectDir })
-        .then(result => result.stdout.trim() === 'yes')
-        .catch(() => false);
-
-      if (hasServerDir && hasPnpmWorkspace) {
-        devCwd = path.join(projectDir, 'server');
-        console.log(`[Local] Detected monorepo, running dev server from ./server`);
-      }
-
-      // Use sh -c to explicitly set PORT in the shell command
-      // This ensures it propagates to all child processes/scripts (like skybridge)
+      // pnpm workspace runs from root, npm runs from project dir
+      const devCwd = projectDir;
       const pkgManager = hasPnpmWorkspace ? 'pnpm' : 'npm';
       const devCommand = `PORT=${devPort} ${pkgManager} run dev`;
 
@@ -363,17 +278,12 @@ export class LocalDeploymentAdapter implements IDeploymentService {
 
     console.log(`[Local] Dev server will run on port ${devPort}`);
 
-    let devCwd = projectDir;
-    const hasServerDir = await execAsync('test -d server && echo "yes" || echo "no"', { cwd: projectDir })
-      .then(result => result.stdout.trim() === 'yes')
-      .catch(() => false);
+    // pnpm workspace runs from root
+    const devCwd = projectDir;
+    const pkgManager = hasPnpmWorkspace ? 'pnpm' : 'npm';
+    const devCommand = `PORT=${devPort} ${pkgManager} run dev`;
 
-    if (hasServerDir && hasPnpmWorkspace) {
-      devCwd = path.join(projectDir, 'server');
-      console.log(`[Local] Detected monorepo, running dev server from ./server`);
-    }
-
-    const devProcess = spawn(hasPnpmWorkspace ? 'pnpm' : 'npm', ['run', 'dev'], {
+    const devProcess = spawn('sh', ['-c', devCommand], {
       cwd: devCwd,
       env: {
         ...process.env,

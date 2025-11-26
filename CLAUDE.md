@@ -68,6 +68,12 @@
 
 ```
 chattable/
+├── template/                     # Apps SDK template (복사되어 프로젝트 생성)
+│   ├── server/                   # MCP 서버 + Express
+│   ├── web/                      # 위젯 React 앱
+│   ├── shared/                   # 공유 코드
+│   └── package.json              # pnpm workspace
+│
 ├── src/                          # Frontend source
 │   ├── main.tsx                  # Entry point
 │   ├── App.tsx                   # Main app component & routing
@@ -136,16 +142,18 @@ chattable/
 
 ### 1. Local-First Deployment
 
-프로젝트가 생성되면 `.chattable/{uuid}/` 폴더에 Apps SDK 템플릿이 클론됩니다:
+프로젝트가 생성되면 `template/` 폴더가 `.chattable/{uuid}/`로 복사됩니다:
 
 ```typescript
 // server/src/services/deployment/local.adapter.ts
 const projectDir = path.join(process.cwd(), '.chattable', projectId);
-await execAsync(`git clone ${gitUrl} .`, { cwd: projectDir });
-await execAsync('npm install', { cwd: projectDir });
+await cp(this.templateDir, projectDir, { recursive: true });  // 네트워크 불필요
+await execAsync('pnpm install', { cwd: projectDir });
 ```
 
-각 프로젝트는 고유한 포트(40000+)에서 dev 서버를 실행합니다.
+- 네트워크 연결 없이 오프라인에서도 동작
+- 각 프로젝트는 고유한 포트(40000+)에서 dev 서버를 실행
+- `template/`을 수정하면 새 프로젝트에 반영됨
 
 ### 2. Mastra Agent + MCP Tools
 
