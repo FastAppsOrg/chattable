@@ -40,7 +40,7 @@ export class LocalDeploymentAdapter implements IDeploymentService {
 
   constructor() {
     this.projectsDir = path.join(process.cwd(), '.chattable');
-    this.templateDir = path.join(process.cwd(), 'template');
+    this.templateDir = path.join(process.cwd(), '..', 'template');
   }
 
   private emitProgress(event: ProgressEvent) {

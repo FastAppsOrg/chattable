@@ -1,1 +1,1 @@
-export * from "./pokemon.schema";
+export * from "./showcase.schema";
