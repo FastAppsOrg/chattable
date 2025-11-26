@@ -16,7 +16,7 @@ import { useAuth } from './hooks/useAuth'
 import { useToast } from './hooks/useToast'
 import { useProject } from './hooks/useProject'
 import { SettingsModal } from './components/settings/SettingsModal'
-import { generateProjectName } from './utils/nameGenerator'
+import { generateProjectName } from './utils/formatters'
 
 function AppContent() {
   const navigate = useNavigate()

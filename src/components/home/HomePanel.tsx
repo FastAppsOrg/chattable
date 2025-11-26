@@ -7,7 +7,7 @@ import { apiClient } from '../../utils/api'
 import styles from './HomePanel.module.css'
 import { useAuth } from '@/hooks/useAuth'
 import { API_ENDPOINTS } from '../../constants/api'
-import { generateProjectName } from '../../utils/nameGenerator'
+import { generateProjectName } from '../../utils/formatters'
 
 interface HomePanelProps {
   onCreate: (form: CreateProjectForm, initialPrompt?: string) => Promise<void>

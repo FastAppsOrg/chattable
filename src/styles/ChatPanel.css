@@ -229,19 +229,22 @@
   border: none; /* No border by default, clean ChatGPT style */
 }
 
-/* Markdown styling */
+/* Markdown styling - Compact spacing like ChatGPT */
 .message-content h1,
 .message-content h2,
 .message-content h3,
 .message-content h4,
 .message-content h5,
 .message-content h6 {
-  margin: var(--spacing-md) 0 var(--spacing-sm) 0;
+  margin: 16px 0 8px 0;
   color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.3;
 }
 
 .message-content h1 {
   font-size: var(--font-size-2xl);
+  margin: 20px 0 12px 0;
 }
 .message-content h2 {
   font-size: 1.3rem;
@@ -251,23 +254,37 @@
 }
 
 .message-content p {
-  margin: var(--spacing-sm) 0;
+  margin: 8px 0;
+  line-height: 1.6;
 }
 
-/* Tighter spacing between paragraph and list */
+/* Tighter spacing between elements */
+.message-content p + p {
+  margin-top: 12px;
+}
+
+.message-content h1 + p,
+.message-content h2 + p,
+.message-content h3 + p,
+.message-content h4 + p,
+.message-content h5 + p,
+.message-content h6 + p {
+  margin-top: 8px;
+}
+
 .message-content p + ul,
 .message-content p + ol {
-  margin-top: var(--spacing-xs);
+  margin-top: 4px;
 }
 
 .message-content ul,
 .message-content ol {
-  margin: var(--spacing-sm) 0;
-  padding-left: var(--spacing-lg);
+  margin: 8px 0;
+  padding-left: 24px;
 }
 
 .message-content li {
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: 4px;
   line-height: 1.6;
 }
 
@@ -278,9 +295,9 @@
 /* Nested lists should have tighter spacing */
 .message-content li > ul,
 .message-content li > ol {
-  margin-top: var(--spacing-xs);
-  margin-bottom: var(--spacing-xs);
-  padding-left: var(--spacing-md);
+  margin-top: 4px;
+  margin-bottom: 4px;
+  padding-left: 20px;
 }
 
 /* First paragraph in a list item should have no top margin */
@@ -291,6 +308,12 @@
 /* Last paragraph in a list item should have no bottom margin */
 .message-content li > p:last-child {
   margin-bottom: 0;
+}
+
+/* Strong/bold text */
+.message-content strong {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
 }
 
 /* Remove top margin from first element and bottom margin from last element */
@@ -304,20 +327,21 @@
 
 .message-content code {
   background: rgba(255, 255, 255, 0.1);
-  padding: calc(var(--spacing-xs) / 2) var(--spacing-xs);
+  padding: 2px 6px;
   border-radius: var(--radius-sm);
-  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 0.9em;
+  color: var(--color-text-primary);
 }
 
 .message-content pre {
-  margin: var(--spacing-md) 0;
+  margin: 12px 0;
   border-radius: var(--radius-md);
   overflow-x: auto;
 }
 
 .message-content pre > div {
-  padding: var(--spacing-md) !important;
+  padding: 12px !important;
   margin: 0 !important;
   background: var(--color-code-background) !important;
   border-radius: var(--radius-md);
@@ -329,17 +353,22 @@
   color: #24292e !important;
 }
 
+[data-theme='light'] .message-content code {
+  background: rgba(0, 0, 0, 0.06);
+}
+
 .message-content blockquote {
   border-left: 3px solid var(--color-info);
-  padding-left: var(--spacing-md);
-  margin: var(--spacing-sm) 0;
-  color: var(--color-text-muted);
+  padding-left: 12px;
+  margin: 12px 0;
+  color: var(--color-text-secondary);
   font-style: italic;
 }
 
 .message-content a {
   color: var(--color-info);
   text-decoration: none;
+  transition: text-decoration 0.15s;
 }
 
 .message-content a:hover {
@@ -349,25 +378,26 @@
 .message-content table {
   border-collapse: collapse;
   width: 100%;
-  margin: var(--spacing-md) 0;
+  margin: 16px 0;
+  font-size: 14px;
 }
 
 .message-content th,
 .message-content td {
   border: 1px solid var(--color-border-default);
-  padding: var(--spacing-sm);
+  padding: 8px 12px;
   text-align: left;
 }
 
 .message-content th {
-  background: rgba(64, 224, 208, 0.1);
-  font-weight: 500;  /* Medium weight */
+  background: var(--color-bg-secondary);
+  font-weight: var(--font-weight-semibold);
 }
 
 .message-content hr {
   border: none;
   border-top: 1px solid var(--color-border-default);
-  margin: var(--spacing-md) 0;
+  margin: 20px 0;
 }
 
 .message.user .message-content {
@@ -653,24 +683,6 @@
 .abort-button:hover:not(:disabled) {
   background: var(--color-danger-hover);
   border-color: var(--color-danger-hover);
-}
-
-
-/* Markdown support for code blocks */
-.message-content pre {
-  background: var(--color-bg-primary);
-  padding: var(--spacing-sm);
-  border-radius: var(--radius-md);
-  overflow-x: auto;
-  margin: var(--spacing-sm) 0;
-}
-
-.message-content code {
-  background: var(--color-bg-primary);
-  padding: calc(var(--spacing-xs) / 2) var(--spacing-xs);
-  border-radius: var(--radius-sm);
-  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
-  font-size: var(--font-size-sm);
 }
 
 /* Scrollbar styling - transparent/hidden */
