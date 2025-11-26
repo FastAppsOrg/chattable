@@ -88,30 +88,6 @@ export class MemoryService {
   }
 
   /**
-   * Get all threads for a specific resource (user)
-   *
-   * @param resourceId - Resource ID (typically userId)
-   * @returns Array of threads
-   */
-  static async getThreadsForResource(resourceId: string): Promise<any[]> {
-    try {
-      const memory = await this.getMemory();
-      const storage = (memory as any).storage;
-
-      if (!storage || typeof storage.getThreadsByResourceId !== 'function') {
-        console.warn('[MemoryService] Storage does not support getThreadsByResourceId');
-        return [];
-      }
-
-      const threads = await storage.getThreadsByResourceId({ resourceId });
-      return threads || [];
-    } catch (error) {
-      console.error('[MemoryService] Error getting threads:', error);
-      return [];
-    }
-  }
-
-  /**
    * Get messages from a specific thread
    *
    * @param threadId - Thread ID (typically projectId)

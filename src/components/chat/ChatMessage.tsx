@@ -406,4 +406,21 @@ export const ChatMessage = memo(function ChatMessage({ message, onApplyPrompt, i
       </div>
     </div>
   )
+}, (prevProps, nextProps) => {
+  // Custom comparison for memo - ensure re-render when content changes during streaming
+  if (prevProps.isThinking !== nextProps.isThinking) return false
+  if (prevProps.isPending !== nextProps.isPending) return false
+  if (prevProps.message.content !== nextProps.message.content) return false
+  if (prevProps.message.reasoning !== nextProps.message.reasoning) return false
+  if (prevProps.message.id !== nextProps.message.id) return false
+  // Compare toolInfo length and states
+  const prevTools = prevProps.message.toolInfo
+  const nextTools = nextProps.message.toolInfo
+  if (prevTools?.length !== nextTools?.length) return false
+  if (prevTools && nextTools) {
+    for (let i = 0; i < prevTools.length; i++) {
+      if (prevTools[i].state !== nextTools[i].state) return false
+    }
+  }
+  return true
 })

@@ -19,7 +19,6 @@ import {
   LogIn,
 } from 'lucide-react'
 import { useProjectContext } from '../../hooks/useProjectContext'
-import { useProjectStatusWebSocket } from '../../hooks/useProjectStatusWebSocket'
 import styles from './ProjectSidePanel.module.css'
 import { useAuth } from '@/hooks/useAuth'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -75,35 +74,6 @@ export function ProjectSidePanel({
 
   // Extract username from user metadata
   const username = user?.user_metadata?.preferred_username || user?.email?.split('@')[0] || 'User'
-
-  // Get access token for WebSocket
-  const [accessToken, setAccessToken] = useState<string | null>(null)
-
-  useEffect(() => {
-    const loadToken = async () => {
-      if (user) {
-        const token = await getAccessToken()
-        setAccessToken(token)
-      }
-    }
-    loadToken()
-  }, [user, getAccessToken])
-
-  // WebSocket for current project status updates
-  useProjectStatusWebSocket({
-    projectId: currentProject?.project_id || null,
-    accessToken,
-    enabled: !!currentProject && !!user && !!accessToken,
-    onStatusUpdate: (status) => {
-      // Update current project status if it changed
-      if (status.container_status !== currentProject?.status) {
-        fetchProjects() // Refresh project list when status changes
-      }
-    },
-    onError: (error) => {
-      console.error('Project status WebSocket error:', error)
-    },
-  })
 
   // Close dropdown when clicking outside
   useEffect(() => {

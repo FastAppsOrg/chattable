@@ -70,9 +70,10 @@ export function ChatPanel({
     onResponse: (response) => {
       console.log('[ChatPanel] Stream response:', response.status)
     },
-    onStream: ({ data }) => {
+    onStream: ({ delta, snapshot }) => {
       // Debug: Log each streaming event to verify chunks are arriving incrementally
-      console.log('[ChatPanel] Stream chunk:', data?.type || 'unknown', data)
+      console.log('[ChatPanel] Stream delta:', delta)
+      console.log('[ChatPanel] Stream snapshot parts:', snapshot?.parts?.length, snapshot?.parts?.slice(-1))
     },
     onFinish: (message) => {
       console.log('[ChatPanel] Stream finished:', message.id)
@@ -94,9 +95,10 @@ export function ChatPanel({
   useEffect(() => {
     if (status === 'streaming' && messages.length > 0) {
       const lastMsg = messages[messages.length - 1]
-      const textParts = lastMsg.parts?.filter((p: any) => p.type === 'text')
-      const textLength = textParts?.reduce((acc: number, p: any) => acc + (p.text?.length || 0), 0) || 0
-      console.log('[ChatPanel] Messages updated during stream - text length:', textLength, 'parts:', lastMsg.parts?.length)
+      // Log the actual structure of parts to understand what AI SDK is sending
+      console.log('[ChatPanel] Last message parts:', JSON.stringify(lastMsg.parts, null, 2))
+      console.log('[ChatPanel] Last message content:', lastMsg.content)
+      console.log('[ChatPanel] Full last message:', lastMsg)
     }
   }, [messages, status])
 

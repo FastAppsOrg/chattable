@@ -18,19 +18,3 @@ export function getToolIcon(toolName: string): string {
   }
   return icons[toolName] || '🔧'
 }
-
-// Helper function to get severity color for torch evaluation risks
-export function getSeverityColor(severity: string): string {
-  switch (severity) {
-    case 'critical':
-      return '#ff4444'
-    case 'high':
-      return '#ff8800'
-    case 'medium':
-      return '#ffbb33'
-    case 'low':
-      return '#00C851'
-    default:
-      return '#666'
-  }
-}

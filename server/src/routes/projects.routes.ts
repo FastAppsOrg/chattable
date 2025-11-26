@@ -1596,45 +1596,5 @@ export function createProjectsRoutes(
     }
   });
 
-  /**
-   * GET /api/projects/:id/title
-   * Get thread title from Mastra Memory
-   */
-  router.get('/:id/title', async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const user = (req as any).user;
-
-      if (!user) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-
-      // Get project from DB
-      const project = await dbService.getProject(id);
-      if (!project || project.userId !== user.id) {
-        return res.status(404).json({ error: 'Project not found' });
-      }
-
-      // Get thread from Mastra Memory
-      const memory = await MemoryService.getMemory();
-      const thread = await memory.getThreadById({ threadId: id });
-
-      if (!thread) {
-        return res.status(404).json({ error: 'Thread not found' });
-      }
-
-      // If title was generated, update project name in DB
-      if (thread.title && thread.title !== project.name) {
-        await dbService.updateProject(id, { name: thread.title });
-        console.log(`[Projects] Updated project name to: ${thread.title}`);
-      }
-
-      res.json({ title: thread.title || project.name });
-    } catch (error: any) {
-      console.error('[Projects] Error fetching thread title:', error);
-      res.status(500).json({ error: error.message || 'Internal server error' });
-    }
-  });
-
   return router;
 }

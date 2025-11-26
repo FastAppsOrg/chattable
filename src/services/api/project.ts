@@ -201,43 +201,6 @@ export class ProjectService {
     }
   }
 
-  // ==================== Freestyle Operations (REMOVED) ====================
-  // These operations are no longer supported after migrating to provider-agnostic architecture
-  // Dev server URLs are now returned directly in project creation response
-
-  // ==================== Legacy Operations (to be removed) ====================
-
-  /** @deprecated Use Freestyle MCP instead */
-  static async fetchProjectFiles(
-    projectId: string,
-    path?: string,
-    recursive?: boolean,
-    query?: string,
-  ): Promise<FileNode[]> {
-    const params = new URLSearchParams()
-    if (path) params.append('path', path)
-    if (recursive !== undefined) params.append('recursive', String(recursive))
-    if (query) params.append('query', query)
-
-    const url = `${API_ENDPOINTS.projectFiles(projectId)}?${params.toString()}`
-    const response = await apiClient.get(url)
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch files: ${response.status}`)
-    }
-
-    return response.json()
-  }
-
-  /** @deprecated Freestyle uses ephemeral URLs, no SSH */
-  static async fetchProjectSSHInfo(projectId: string): Promise<SSHInfo> {
-    const response = await apiClient.get(`/api/projects/${projectId}/ssh-info`)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch SSH info: ${response.status}`)
-    }
-    return response.json()
-  }
-
   /**
    * Restart a project (recovery after server restart)
    * Only works for local projects
@@ -290,50 +253,9 @@ export class ProjectService {
     }
   }
 
-  /** @deprecated Freestyle provides ephemeral_url directly */
-  static async fetchProjectPreview(projectId: string): Promise<ProjectPreview> {
-    const response = await apiClient.get(`/api/projects/${projectId}/preview`)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch preview: ${response.status}`)
-    }
-    return response.json()
-  }
-
-  /** @deprecated Freestyle auto-starts dev servers */
-  static async startProjectPreview(
-    projectId: string,
-    command?: string,
-  ): Promise<{ status: string; message: string }> {
-    const body = command ? { command } : {}
-    // const response = await apiClient.post(API_ENDPOINTS.projectPreviewStart(projectId), body)
-    throw new Error('Preview start not implemented')
-    // if (!response.ok) {
-    //   throw new Error(`Failed to start preview: ${response.status}`)
-    // }
-    // return await response.json()
-  }
-
-  /** @deprecated */
-  static async stopProjectPreview(
-    projectId: string,
-  ): Promise<{ status: string; message: string }> {
-    const response = await apiClient.post(`/api/projects/${projectId}/preview/stop`, {})
-    if (!response.ok) {
-      throw new Error(`Failed to stop preview: ${response.status}`)
-    }
-    return response.json()
-  }
-
-  /** @deprecated */
-  static async fetchProjectPorts(projectId: string): Promise<PortsResponse> {
-    const response = await apiClient.get(`/api/projects/${projectId}/ports`)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ports: ${response.status}`)
-    }
-    return response.json()
-  }
-
-  /** @deprecated Use Freestyle Git API */
+  /**
+   * Integrate Git with a project (create GitHub repo)
+   */
   static async integrateGit(
     projectId: string,
     config: {
@@ -351,7 +273,9 @@ export class ProjectService {
     return response.json()
   }
 
-  /** @deprecated Use Freestyle Git API */
+  /**
+   * Push initial commit to GitHub
+   */
   static async gitPushInitial(projectId: string): Promise<{
     success: boolean
     message: string
@@ -364,30 +288,9 @@ export class ProjectService {
     return response.json()
   }
 
-  /** @deprecated Use Freestyle Git API */
-  static async fetchGitCommits(
-    projectId: string,
-    limit?: number
-  ): Promise<Array<{
-    oid: string
-    message: string
-    author: string
-    timestamp: number
-  }>> {
-    const params = new URLSearchParams()
-    if (limit) params.append('limit', String(limit))
-
-    // const url = `${API_ENDPOINTS.projectGitCommits(projectId)}?${params.toString()}`
-    // const url = '' // Mock empty url
-    // const response = await apiClient.get(url)
-    // if (!response.ok) {
-    //   throw new Error(`Failed to fetch commits: ${response.status}`)
-    // }
-    // return await response.json()
-    return []
-  }
-
-  /** @deprecated Use Freestyle Git API */
+  /**
+   * Push commits to GitHub
+   */
   static async gitPush(projectId: string): Promise<{
     success: boolean
     message: string

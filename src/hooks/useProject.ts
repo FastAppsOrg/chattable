@@ -129,46 +129,6 @@ export function useProject() {
     setSelectedProject(null)
   }, [])
 
-  // ==================== Runtime Operations ====================
-
-  /**
-   * Fetch file tree for a project
-   */
-  const fetchFiles = useCallback(
-    async (
-      projectId: string,
-      path?: string,
-      recursive?: boolean,
-      query?: string,
-    ): Promise<FileNode[]> => {
-      try {
-        setError(null)
-        return await ProjectService.fetchProjectFiles(projectId, path, recursive, query)
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch files'
-        setError(errorMessage)
-        console.error('Failed to fetch project files:', err)
-        throw err
-      }
-    },
-    [],
-  )
-
-  /**
-   * Fetch SSH connection info for a project
-   */
-  const fetchSSHInfo = useCallback(async (projectId: string): Promise<SSHInfo> => {
-    try {
-      setError(null)
-      return await ProjectService.fetchProjectSSHInfo(projectId)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch SSH info'
-      setError(errorMessage)
-      console.error('Failed to fetch SSH info:', err)
-      throw err
-    }
-  }, [])
-
   /**
    * Restart project sandbox
    */
@@ -180,72 +140,6 @@ export function useProject() {
       const errorMessage = err instanceof Error ? err.message : 'Failed to restart project'
       setError(errorMessage)
       console.error('Failed to restart project:', err)
-      throw err
-    }
-  }, [])
-
-  /**
-   * Get project preview status
-   */
-  const fetchPreview = useCallback(async (projectId: string): Promise<ProjectPreview> => {
-    try {
-      setError(null)
-      return await ProjectService.fetchProjectPreview(projectId)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch preview'
-      setError(errorMessage)
-      console.error('Failed to fetch preview:', err)
-      throw err
-    }
-  }, [])
-
-  /**
-   * Start project preview server
-   */
-  const startPreview = useCallback(
-    async (projectId: string, command?: string): Promise<{ status: string; message: string }> => {
-      try {
-        setError(null)
-        return await ProjectService.startProjectPreview(projectId, command)
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to start preview'
-        setError(errorMessage)
-        console.error('Failed to start preview:', err)
-        throw err
-      }
-    },
-    [],
-  )
-
-  /**
-   * Stop project preview server
-   */
-  const stopPreview = useCallback(
-    async (projectId: string): Promise<{ status: string; message: string }> => {
-      try {
-        setError(null)
-        return await ProjectService.stopProjectPreview(projectId)
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to stop preview'
-        setError(errorMessage)
-        console.error('Failed to stop preview:', err)
-        throw err
-      }
-    },
-    [],
-  )
-
-  /**
-   * Fetch project ports
-   */
-  const fetchPorts = useCallback(async (projectId: string): Promise<PortsResponse> => {
-    try {
-      setError(null)
-      return await ProjectService.fetchProjectPorts(projectId)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch ports'
-      setError(errorMessage)
-      console.error('Failed to fetch ports:', err)
       throw err
     }
   }, [])
@@ -276,12 +170,6 @@ export function useProject() {
     clearSelection,
 
     // Runtime operations
-    fetchFiles,
-    fetchSSHInfo,
     restart,
-    fetchPreview,
-    startPreview,
-    stopPreview,
-    fetchPorts,
   }
 }

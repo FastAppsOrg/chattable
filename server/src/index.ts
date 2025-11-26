@@ -2,8 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
-import { WebSocketServer } from 'ws';
-import { parse } from 'url';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger.js';
 import { createProjectsRoutes } from './routes/projects.routes.js';
@@ -11,13 +9,10 @@ import { createSecretsRoutes } from './routes/secrets.routes.js';
 import { createAuthRoutes } from './routes/auth.routes.js';
 import { createGitHubRoutes } from './routes/github.routes.js';
 import { createGitRoutes } from './routes/git.routes.js';
-// Removed test stream routes - no longer needed
-// import { createDevRoutes } from './routes/dev.routes.js';
 import { LocalDeploymentAdapter } from './services/deployment/local.adapter.js';
 import { dbService } from './db/db.service.js';
 import { sessionService } from './services/session.service.js';
 import { MCPService } from './services/mcp.service.js';
-import { ChatWebSocketService } from './services/chat-websocket.service.js';
 
 dotenv.config();
 process.setMaxListeners(20);
@@ -92,9 +87,6 @@ app.use('/api/secrets', createSecretsRoutes());
 app.use('/api/git', authMiddleware, createGitRoutes());
 app.use('/github', authMiddleware, createGitHubRoutes());
 
-// Development routes (no auth required for local dev)
-// app.use('/api/dev', createDevRoutes());
-
 /**
  * @swagger
  * /health:
@@ -122,45 +114,6 @@ app.get('/health', (req, res) => {
 });
 
 const server = createServer(app);
-const wss = new WebSocketServer({ noServer: true });
-const chatWebSocketService = new ChatWebSocketService(wss, dbService);
-
-server.on('upgrade', async (request, socket, head) => {
-  const { pathname, query } = parse(request.url || '', true);
-
-  const token = (query.token as string) || 'local-token';
-
-  try {
-    const user = sessionService.validateToken(token);
-
-    const match = pathname?.match(/^\/projects\/([^/]+)\/chat$/);
-    if (!match) {
-      socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
-    const projectId = match[1];
-
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit('connection', ws, request);
-      chatWebSocketService.handleConnection(ws as any, request, projectId, user.id);
-    });
-  } catch (error) {
-    const user = { id: 'local-user' };
-    const match = pathname?.match(/^\/projects\/([^/]+)\/chat$/);
-    if (match) {
-      const projectId = match[1];
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request);
-        chatWebSocketService.handleConnection(ws as any, request, projectId, user.id);
-      });
-    } else {
-      socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
-      socket.destroy();
-    }
-  }
-});
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
@@ -178,7 +131,7 @@ const gracefulShutdown = async (signal: string) => {
   const forceShutdownTimeout = setTimeout(() => {
     console.error('❌ Graceful shutdown timed out, forcing exit...');
     process.exit(1);
-  }, 10000); // 10 second timeout
+  }, 10000);
 
   try {
     await new Promise<void>((resolve, reject) => {
@@ -192,36 +145,7 @@ const gracefulShutdown = async (signal: string) => {
       });
     });
 
-    const closePromises: Promise<void>[] = [];
-    wss.clients.forEach((client) => {
-      closePromises.push(
-        new Promise((resolve) => {
-          if (client.readyState === client.OPEN) {
-            client.close(1000, 'Server shutting down');
-            client.once('close', () => resolve());
-            // Timeout for individual client close
-            setTimeout(() => resolve(), 1000);
-          } else {
-            resolve();
-          }
-        })
-      );
-    });
-    await Promise.all(closePromises);
-
-    await new Promise<void>((resolve, reject) => {
-      wss.close((err) => {
-        if (err) {
-          console.error('❌ Error closing WebSocket server:', err);
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
-
     clearTimeout(forceShutdownTimeout);
-
     process.exit(0);
   } catch (error) {
     console.error('❌ Error during graceful shutdown:', error);
