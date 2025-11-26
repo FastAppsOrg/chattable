@@ -367,10 +367,13 @@ export function ChatPanel({
   }
 
   const handleSendMessage = () => {
-    if ((!inputValue.trim() && selectedImages.length === 0) || isLoading) return
+    // Get the actual DOM value to avoid React state timing issues
+    const currentInput = inputRef.current?.value || inputValue
+    
+    if ((!currentInput.trim() && selectedImages.length === 0) || isLoading) return
 
     // Format selected elements context with detailed info
-    let messageWithContext = inputValue
+    let messageWithContext = currentInput
     if (selectedElements && selectedElements.length > 0) {
       const elementsContext = selectedElements.map((el, idx) => {
         const parts: string[] = []
@@ -411,10 +414,17 @@ export function ChatPanel({
     // Use AI SDK sendMessage - it handles everything
     sendMessage({ text: messageWithContext })
 
-    // Clear input and reset UI
+    // Clear input and reset UI - both state and DOM
     setInputValue('')
     setTextareaHeight(80)
+    
+    // Clear any pending debounce timers
+    if (heightDebounceTimer.current) {
+      clearTimeout(heightDebounceTimer.current)
+    }
+    
     if (inputRef.current) {
+      inputRef.current.value = '' // Clear DOM value directly
       inputRef.current.style.height = '80px'
     }
 
