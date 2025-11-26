@@ -183,9 +183,18 @@ function ToolInvocationDisplay({ tool }: { tool: { toolName: string; args: any; 
   )
 }
 
-// Collapsible thinking section component
-function ThinkingSection({ content, isStreaming = false }: { content: string; isStreaming?: boolean }) {
+// Collapsible thinking section component - unified accordion with status caption
+function ThinkingSection({
+  content,
+  isStreaming = false,
+  statusCaption
+}: {
+  content: string;
+  isStreaming?: boolean;
+  statusCaption?: string;
+}) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const hasContent = content && content.length > 0
   const isLong = content.length > 300
   const displayContent = isLong && !isExpanded
     ? content.substring(0, 300) + '...'
@@ -200,16 +209,18 @@ function ThinkingSection({ content, isStreaming = false }: { content: string; is
         <span className="reasoning-icon">
           {isStreaming ? <Loader2 className="reasoning-spinner" size={14} /> : '💭'}
         </span>
-        <span>{isStreaming ? 'Thinking...' : 'Thinking'}</span>
-        {isLong && !isStreaming && (
+        <span>Thinking</span>
+        {hasContent && (
           <span className="reasoning-toggle">
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </span>
         )}
       </button>
-      <div className={`reasoning-content ${isExpanded ? 'expanded' : ''}`}>
-        {displayContent}
-      </div>
+      {hasContent && (
+        <div className={`reasoning-content ${isExpanded ? 'expanded' : ''}`}>
+          {displayContent}
+        </div>
+      )}
       {isLong && !isExpanded && !isStreaming && (
         <button
           className="reasoning-expand-btn"
@@ -218,22 +229,35 @@ function ThinkingSection({ content, isStreaming = false }: { content: string; is
           Show more
         </button>
       )}
+      {/* Minimal status caption below accordion */}
+      {isStreaming && statusCaption && (
+        <div className="reasoning-status-caption">{statusCaption}</div>
+      )}
     </div>
   )
 }
 
-// Streaming thinking placeholder
-function StreamingThinkingIndicator() {
-  return (
-    <div className="message-reasoning streaming">
-      <div className="reasoning-header">
-        <span className="reasoning-icon">
-          <Loader2 className="reasoning-spinner" size={14} />
-        </span>
-        <span>Thinking...</span>
-      </div>
-    </div>
-  )
+// Helper to get status caption based on current activity
+function getStatusCaption(toolInfo?: { toolName: string; state: string }[]): string {
+  if (!toolInfo || toolInfo.length === 0) return 'Processing...'
+
+  const runningTool = toolInfo.find(t => t.state !== 'result')
+  if (runningTool) {
+    const toolName = runningTool.toolName
+    switch (toolName) {
+      case 'Read': return 'Reading file...'
+      case 'Write': return 'Writing file...'
+      case 'Edit': return 'Editing file...'
+      case 'Bash': return 'Running command...'
+      case 'Grep': return 'Searching...'
+      case 'Glob': return 'Finding files...'
+      case 'WebFetch': return 'Fetching web content...'
+      case 'WebSearch': return 'Searching web...'
+      case 'TodoWrite': return 'Updating tasks...'
+      default: return `Running ${toolName}...`
+    }
+  }
+  return 'Processing...'
 }
 
 export const ChatMessage = memo(function ChatMessage({ message, onApplyPrompt, isPending, isThinking }: ChatMessageProps) {
@@ -319,12 +343,14 @@ export const ChatMessage = memo(function ChatMessage({ message, onApplyPrompt, i
 
   return (
     <div className={messageClass} style={{ opacity: isPending ? 0.5 : 1 }}>
-      {/* Reasoning/Thinking section - collapsible */}
-      {message.reasoning ? (
-        <ThinkingSection content={message.reasoning} isStreaming={isThinking} />
-      ) : isThinking && !message.content && !message.toolInfo?.length ? (
-        <StreamingThinkingIndicator />
-      ) : null}
+      {/* Reasoning/Thinking section - unified accordion with status caption */}
+      {(message.reasoning || isThinking) && (
+        <ThinkingSection
+          content={message.reasoning || ''}
+          isStreaming={isThinking}
+          statusCaption={isThinking ? getStatusCaption(message.toolInfo) : undefined}
+        />
+      )}
 
       {/* Tool invocations */}
       {message.toolInfo && message.toolInfo.length > 0 && (

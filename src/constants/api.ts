@@ -33,8 +33,4 @@ export const API_ENDPOINTS = {
   githubRepositories: '/github/repositories',
   githubOrganizations: '/github/organizations',
   githubBranches: (owner: string, repo: string) => `/github/repos/${owner}/${repo}/branches`,
-
-  // Mastra endpoints
-  mastraChat: '/api/mastra/chat',
-  mastraGenerateWidget: '/api/mastra/generate-widget',
 } as const

@@ -1347,3 +1347,17 @@
 [data-theme='light'] .reasoning-spinner {
   color: #9333ea;
 }
+
+/* Status caption below thinking accordion */
+.reasoning-status-caption {
+  padding: 6px 14px 10px 14px;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  border-top: 1px solid rgba(168, 85, 247, 0.1);
+  background: rgba(168, 85, 247, 0.03);
+}
+
+[data-theme='light'] .reasoning-status-caption {
+  background: rgba(168, 85, 247, 0.02);
+}

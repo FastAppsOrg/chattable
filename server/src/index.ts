@@ -18,7 +18,6 @@ import { dbService } from './db/db.service.js';
 import { sessionService } from './services/session.service.js';
 import { MCPService } from './services/mcp.service.js';
 import { ChatWebSocketService } from './services/chat-websocket.service.js';
-import mastraRoutes, { setDatabaseService } from './routes/mastra.routes.js';
 
 dotenv.config();
 process.setMaxListeners(20);
@@ -41,7 +40,6 @@ console.log('🏠 Using Local Deployment Adapter (projects in .chattable folder)
 const deploymentService = new LocalDeploymentAdapter();
 
 const mcpService = new MCPService();
-setDatabaseService(dbService);
 
 const authMiddleware = async (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
@@ -93,11 +91,6 @@ app.use('/api/projects', conditionalAuthMiddleware, createProjectsRoutes(deploym
 app.use('/api/secrets', createSecretsRoutes());
 app.use('/api/git', authMiddleware, createGitRoutes());
 app.use('/github', authMiddleware, createGitHubRoutes());
-
-// Mastra routes - auth middleware applied for project updates
-app.use('/api/mastra', authMiddleware, mastraRoutes);
-
-// Removed test stream routes - no longer needed
 
 // Development routes (no auth required for local dev)
 // app.use('/api/dev', createDevRoutes());

@@ -70,6 +70,10 @@ export function ChatPanel({
     onResponse: (response) => {
       console.log('[ChatPanel] Stream response:', response.status)
     },
+    onStream: ({ data }) => {
+      // Debug: Log each streaming event to verify chunks are arriving incrementally
+      console.log('[ChatPanel] Stream chunk:', data?.type || 'unknown', data)
+    },
     onFinish: (message) => {
       console.log('[ChatPanel] Stream finished:', message.id)
       // Sync project title after first message
@@ -85,6 +89,16 @@ export function ChatPanel({
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
+
+  // Debug: Monitor message updates during streaming
+  useEffect(() => {
+    if (status === 'streaming' && messages.length > 0) {
+      const lastMsg = messages[messages.length - 1]
+      const textParts = lastMsg.parts?.filter((p: any) => p.type === 'text')
+      const textLength = textParts?.reduce((acc: number, p: any) => acc + (p.text?.length || 0), 0) || 0
+      console.log('[ChatPanel] Messages updated during stream - text length:', textLength, 'parts:', lastMsg.parts?.length)
+    }
+  }, [messages, status])
 
   // Poll for project title generation
   const pollProjectTitle = useCallback(async () => {
@@ -483,12 +497,7 @@ export function ChatPanel({
           />
         ))}
 
-        {/* Show streaming indicator */}
-        {status === 'submitted' && (
-          <div className="message message-assistant">
-            <div className="message-content thinking">Thinking...</div>
-          </div>
-        )}
+        {/* Streaming indicator is now handled by ThinkingSection in ChatMessage */}
 
         <div ref={messagesEndRef} />
       </div>
