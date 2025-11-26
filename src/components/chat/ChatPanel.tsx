@@ -4,8 +4,6 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from 'ai'
 import { useProjectContext } from '../../hooks/useProjectContext'
-import type { ChatMessage as ChatMessageType } from '../../types/chat'
-import { ChatMessage } from './ChatMessage'
 import { SelectedElementsCarousel } from './SelectedElementsCarousel'
 import { ImagePlus, X, ArrowUp } from 'lucide-react'
 import '../../styles/ChatPanel.css'
@@ -14,6 +12,19 @@ import { apiClient, getAuthToken } from '@/utils/api'
 import { API_ENDPOINTS, API_BASE_URL } from '@/constants/api'
 import { compressImages, isValidImageFile } from '@/utils/imageCompression'
 import type { CompressedImage } from '@/utils/imageCompression'
+
+// assistant-ui imports
+import { useAISDKRuntime } from '@assistant-ui/react-ai-sdk'
+import {
+  AssistantRuntimeProvider,
+  ThreadPrimitive,
+  MessagePrimitive,
+  useMessagePartText,
+  useMessagePartReasoning,
+} from '@assistant-ui/react'
+
+// Custom components for assistant-ui message parts
+import { AssistantMessage, UserMessage } from './AssistantUIComponents'
 
 export function ChatPanel({
   projectId,
@@ -442,44 +453,17 @@ export function ChatPanel({
     inputRef.current?.focus()
   }, [])
 
-  // Removed unused functions - handleLogout and handleNavigate
-  // These were not being used in the component
+  // Create assistant-ui runtime from AI SDK useChat
+  const chat = useMemo(() => ({
+    messages,
+    status,
+    error,
+    sendMessage,
+    setMessages,
+    stop,
+  }), [messages, status, error, sendMessage, setMessages, stop])
 
-  // Convert AI SDK UIMessage to ChatMessage format for ChatMessage component
-  // AI SDK v5 uses `parts` array instead of `content` string
-  const convertedMessages: ChatMessageType[] = messages.map((msg) => {
-    // Extract text content from parts array (AI SDK v5 format)
-    const textContent = msg.parts
-      ?.filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-      .map(part => part.text)
-      .join('') || ''
-
-    // Extract reasoning/thinking content
-    const reasoningContent = msg.parts
-      ?.filter((part): part is { type: 'reasoning'; reasoning: string } => part.type === 'reasoning')
-      .map(part => part.reasoning)
-      .join('') || undefined
-
-    // Extract tool invocations
-    const toolInvocations = msg.parts
-      ?.filter((part): part is { type: 'tool-invocation'; toolInvocation: any } => part.type === 'tool-invocation')
-      .map(part => ({
-        toolName: part.toolInvocation.toolName,
-        args: part.toolInvocation.args,
-        state: part.toolInvocation.state,
-        result: part.toolInvocation.state === 'result' ? part.toolInvocation.result : undefined,
-      }))
-
-    return {
-      id: msg.id,
-      role: msg.role as 'user' | 'assistant',
-      content: textContent,
-      timestamp: msg.createdAt?.toISOString() || new Date().toISOString(),
-      messageType: 'chat' as const,
-      reasoning: reasoningContent,
-      toolInfo: toolInvocations && toolInvocations.length > 0 ? toolInvocations : undefined,
-    }
-  })
+  const runtime = useAISDKRuntime(chat)
 
   // Auto-scroll when messages change
   useEffect(() => {
@@ -487,162 +471,159 @@ export function ChatPanel({
   }, [messages])
 
   return (
-    <div className="chat-panel">
-      <div className="chat-messages">
-        {convertedMessages.map((msg) => (
-          <ChatMessage
-            key={msg.id}
-            message={msg}
-            onApplyPrompt={applyTorchSuggestion}
-            isPending={false}
-            isThinking={status === 'streaming' && msg.role === 'assistant' && msg === convertedMessages[convertedMessages.length - 1]}
-          />
-        ))}
-
-        {/* Streaming indicator is now handled by ThinkingSection in ChatMessage */}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className="chat-input-container">
-        <div className="chat-input-wrapper">
-          {/* Selected Elements Carousel */}
-          <SelectedElementsCarousel
-            elements={selectedElements}
-            onRemove={onRemoveElement || (() => { })}
-            onClear={onClearElements || (() => { })}
+    <AssistantRuntimeProvider runtime={runtime}>
+      <div className="chat-panel">
+        <div className="chat-messages">
+          <ThreadPrimitive.Messages
+            components={{
+              UserMessage,
+              AssistantMessage,
+            }}
           />
 
-          {/* Image Preview */}
-          {selectedImages.length > 0 && (
-            <div style={{
-              display: 'flex',
-              gap: '8px',
-              padding: '8px',
-              flexWrap: 'wrap',
-              borderBottom: '1px solid var(--border-color)',
-            }}>
-              {selectedImages.map((image, index) => {
-                const compressedImg = compressedImagesPreview[index]
-                const compressedSize = compressedImageSizes[index] || 0
-                const compressedKB = (compressedSize / 1024).toFixed(1)
-                const originalKB = (image.size / 1024).toFixed(1)
-                const sizeDisplay = compressedImg ? `${compressedKB} KB` : 'Compressing...'
+          <div ref={messagesEndRef} />
+        </div>
 
-                return (
-                  <div
-                    key={index}
-                    style={{
-                      position: 'relative',
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      border: '1px solid var(--border-color)',
-                    }}
-                  >
-                    <img
-                      src={imagePreviewUrls[index]}
-                      alt={`Attachment ${index + 1}`}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: '4px',
-                        left: '4px',
-                        background: compressedImg
-                          ? (compressedSize > 500 * 1024 ? 'rgba(255, 100, 100, 0.85)' : 'rgba(0, 150, 0, 0.85)')
-                          : 'rgba(128, 128, 128, 0.85)',
-                        color: 'white',
-                        fontSize: '10px',
-                        padding: '2px 4px',
-                        borderRadius: '4px',
-                        fontWeight: 500,
-                      }}
-                      title={compressedImg ? `Original: ${originalKB} KB` : 'Processing...'}
-                    >
-                      {sizeDisplay}
-                    </div>
-                    <button
-                      onClick={() => handleRemoveImage(index)}
-                      style={{
-                        position: 'absolute',
-                        top: '4px',
-                        right: '4px',
-                        background: 'rgba(0, 0, 0, 0.6)',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '20px',
-                        height: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: 'white',
-                        padding: 0,
-                      }}
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          <textarea
-            ref={inputRef}
-            className="chat-input"
-            value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            placeholder={
-              isLoading
-                ? 'Queue more tasks to be executed (@ for files, / for commands)'
-                : 'Ask me to help with your code... (@ for files, / for commands, paste images)'
-            }
-            style={{ height: `${textareaHeight}px` }}
-          />
-
-          <div className="chat-input-footer">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleImageSelect}
-              style={{ display: 'none' }}
+        <div className="chat-input-container">
+          <div className="chat-input-wrapper">
+            {/* Selected Elements Carousel */}
+            <SelectedElementsCarousel
+              elements={selectedElements}
+              onRemove={onRemoveElement || (() => { })}
+              onClear={onClearElements || (() => { })}
             />
 
-            <div className="input-footer-left"></div>
+            {/* Image Preview */}
+            {selectedImages.length > 0 && (
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                padding: '8px',
+                flexWrap: 'wrap',
+                borderBottom: '1px solid var(--border-color)',
+              }}>
+                {selectedImages.map((image, index) => {
+                  const compressedImg = compressedImagesPreview[index]
+                  const compressedSize = compressedImageSizes[index] || 0
+                  const compressedKB = (compressedSize / 1024).toFixed(1)
+                  const originalKB = (image.size / 1024).toFixed(1)
+                  const sizeDisplay = compressedImg ? `${compressedKB} KB` : 'Compressing...'
 
-            <div className="input-footer-right">
-              <button
-                type="button"
-                className="action-button image-button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
-                title="Attach images"
-              >
-                <ImagePlus size={16} />
-                {selectedImages.length > 0 && (
-                  <span className="badge">{selectedImages.length}</span>
-                )}
-              </button>
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        position: 'relative',
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        border: '1px solid var(--border-color)',
+                      }}
+                    >
+                      <img
+                        src={imagePreviewUrls[index]}
+                        alt={`Attachment ${index + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: '4px',
+                          left: '4px',
+                          background: compressedImg
+                            ? (compressedSize > 500 * 1024 ? 'rgba(255, 100, 100, 0.85)' : 'rgba(0, 150, 0, 0.85)')
+                            : 'rgba(128, 128, 128, 0.85)',
+                          color: 'white',
+                          fontSize: '10px',
+                          padding: '2px 4px',
+                          borderRadius: '4px',
+                          fontWeight: 500,
+                        }}
+                        title={compressedImg ? `Original: ${originalKB} KB` : 'Processing...'}
+                      >
+                        {sizeDisplay}
+                      </div>
+                      <button
+                        onClick={() => handleRemoveImage(index)}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          background: 'rgba(0, 0, 0, 0.6)',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '20px',
+                          height: '20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          color: 'white',
+                          padding: 0,
+                        }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
 
-              <button
-                className="action-button send-button"
-                onClick={handleSendMessage}
-                disabled={isLoading || !inputValue.trim()}
-              >
-                <ArrowUp size={18} />
-              </button>
+            <textarea
+              ref={inputRef}
+              className="chat-input"
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder={
+                isLoading
+                  ? ''
+                  : 'Ask me to help with your code... (@ for files, / for commands, paste images)'
+              }
+              style={{ height: `${textareaHeight}px` }}
+            />
+
+            <div className="chat-input-footer">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageSelect}
+                style={{ display: 'none' }}
+              />
+
+              <div className="input-footer-left"></div>
+
+              <div className="input-footer-right">
+                <button
+                  type="button"
+                  className="action-button image-button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
+                  title="Attach images"
+                >
+                  <ImagePlus size={16} />
+                  {selectedImages.length > 0 && (
+                    <span className="badge">{selectedImages.length}</span>
+                  )}
+                </button>
+
+                <button
+                  className="action-button send-button"
+                  onClick={handleSendMessage}
+                  disabled={isLoading || !inputValue.trim()}
+                >
+                  <ArrowUp size={18} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </AssistantRuntimeProvider>
   )
 }
