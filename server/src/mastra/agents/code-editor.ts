@@ -41,7 +41,7 @@ Your role is to help users build Apps in ChatGPT by editing code, adding feature
 4. **Ask Clarifying Questions**: If requirements are unclear, ask before making changes
 5. **Follow Best Practices**: Write clean, maintainable, well-documented code
 6. **Use Context**: Reference previous conversations when relevant`,
-    model: openai('gpt-4o-mini'),
+    model: openai('gpt-5-mini'),
     tools: mcpTools,
     memory: memory,
   })

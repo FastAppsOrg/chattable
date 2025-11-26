@@ -1,5 +1,5 @@
 import { Memory } from '@mastra/memory';
-import { LibSQLStore } from '@mastra/libsql';
+import { CustomLibSQLStore } from './custom-memory.store.js';
 import path from 'path';
 
 /**
@@ -35,7 +35,7 @@ export class MemoryService {
     this.initializationPromise = (async () => {
       const dbPath = path.resolve(process.cwd(), 'memory.db');
 
-      const storage = new LibSQLStore({
+      const storage = new CustomLibSQLStore({
         id: 'chattable-memory',
         url: `file:${dbPath}`,
       });
@@ -44,6 +44,7 @@ export class MemoryService {
         storage,
         options: {
           lastMessages: 20,
+          // @ts-ignore
           generateTitle: true,
         },
       });
