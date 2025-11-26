@@ -1561,11 +1561,6 @@ export function createProjectsRoutes(
               }
               chunkCount++;
               totalBytes += value.length;
-
-              // Log ALL chunks to see what's coming through
-              const text = decoder.decode(value, { stream: true });
-              console.log(`[Chat] Chunk #${chunkCount}:`, text.substring(0, 500));
-
               res.write(value);
             }
           };
