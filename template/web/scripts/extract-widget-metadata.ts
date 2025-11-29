@@ -110,7 +110,7 @@ async function main() {
       }
 
       // Parse exampleOutput from defineWidget call (skip commented lines)
-      // Match: exampleOutput: examplePokemonData (but not // exampleOutput:)
+      // Match: exampleOutput: exampleShowcaseData (but not // exampleOutput:)
       const lines = content.split('\n');
       let exampleName: string | null = null;
 

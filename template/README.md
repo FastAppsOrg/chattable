@@ -66,7 +66,7 @@ Forwarding     https://3785c5ddc4b6.ngrok-free.app -> http://localhost:3000
 
 - Start a new conversation in ChatGPT
 - Select your newly created connector using **+ → Plus → Your connector**
-- Try prompting the model (e.g., "Show me pikachu details")
+- Try prompting the model (e.g., "Show me the UI showcase")
 
 #### 6. Develop with HMR
 
@@ -88,7 +88,7 @@ Now you can edit React components in `web` and see changes instantly:
 
 For example:
 
-- If you create a widget endpoint named `pokemon-card`, you must create a corresponding React component file at `web/src/widgets/pokemon-card.tsx`
+- If you create a widget endpoint named `showcase`, you must create a corresponding React component file at `web/src/widgets/showcase.tsx`
 - The endpoint name and the widget file name (without the `.tsx` extension) must be identical
 
 This naming convention allows the system to automatically map widget requests to their corresponding React components.

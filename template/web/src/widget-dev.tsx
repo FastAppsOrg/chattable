@@ -21,7 +21,7 @@ function NoOpenAIFallback() {
  * Widget Development Loader
  *
  * Dynamically loads widget based on ?widget=<name> URL parameter
- * Example: http://localhost:5173/widget-dev.html?widget=pokemon
+ * Example: http://localhost:5173/widget-dev.html?widget=showcase
  */
 function WidgetLoader() {
   const [WidgetComponent, setWidgetComponent] = useState<React.ComponentType | null>(null);
@@ -69,7 +69,7 @@ function WidgetLoader() {
     if (!hasOpenAI) return;
 
     const params = new URLSearchParams(window.location.search);
-    const widgetName = params.get("widget") || "pokemon";
+    const widgetName = params.get("widget") || "showcase";
 
     console.log(`[WidgetLoader] Loading widget: ${widgetName}`);
     console.log(`[WidgetLoader] Available widgets:`, Object.keys(widgets));
@@ -111,7 +111,7 @@ function WidgetLoader() {
           <h2 className="mb-2 text-lg font-semibold text-red-800">Error Loading Widget</h2>
           <p className="text-sm text-red-600">{error}</p>
           <p className="mt-4 text-xs text-gray-500">
-            Try: <code className="rounded bg-gray-100 px-2 py-1">?widget=pokemon</code>
+            Try: <code className="rounded bg-gray-100 px-2 py-1">?widget=showcase</code>
           </p>
         </div>
       </div>

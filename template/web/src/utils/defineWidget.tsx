@@ -38,11 +38,11 @@ export interface WidgetMetadata<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
  * @example Basic usage with explicit example
  * ```tsx
  * export default defineWidget({
- *   schema: PokemonSchema,
- *   exampleOutput: { id: 25, name: "pikachu", ... },
+ *   schema: ShowcaseSchema,
+ *   exampleOutput: exampleShowcaseData,
  *   component: () => {
- *     const pokemon = useToolOutput<Pokemon>();
- *     return <div>{pokemon.name}</div>;
+ *     const data = useToolOutput<Showcase>();
+ *     return <div>{data.title}</div>;
  *   }
  * });
  * ```
@@ -59,10 +59,10 @@ export interface WidgetMetadata<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
  * @example With function-based example
  * ```tsx
  * export default defineWidget({
- *   schema: PokemonSchema,
+ *   schema: ShowcaseSchema,
  *   exampleOutput: () => ({
- *     id: Math.floor(Math.random() * 150),
- *     name: "random-pokemon"
+ *     title: "Dynamic Title",
+ *     ...exampleShowcaseData,
  *   }),
  *   component: () => <div>...</div>
  * });

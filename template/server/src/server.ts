@@ -1,5 +1,4 @@
 import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { getPokemon } from "./pokedex.js";
 import { z } from "zod";
 import { McpServer } from "skybridge/server";
 import { readFileSync } from "fs";
@@ -29,6 +28,7 @@ import {
   ghIssueList,
   ghRepoView,
 } from "./git.js";
+import { exampleShowcaseData } from "@apps-sdk-template/shared";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -53,83 +53,64 @@ const widgetMetadata = loadWidgetMetadata();
 
 const server = new McpServer(
   {
-    name: "alpic-openai-app",
+    name: "chattable-app",
     version: "0.0.1",
   },
   { capabilities: {} },
 );
 
-const WIDGET_NAME = "pokemon" as const;
+// ============================================================================
+// Showcase Widget - UI Component Library Demo
+// ============================================================================
+
+const WIDGET_NAME = "showcase" as const;
 
 const exampleOutputMeta = widgetMetadata[WIDGET_NAME]?.exampleOutput
   ? {
       exampleOutput: widgetMetadata[WIDGET_NAME].exampleOutput,
     }
-  : {};
+  : {
+      exampleOutput: exampleShowcaseData,
+    };
 
 server.widget(
   WIDGET_NAME,
   {
-    description: "Pokedex entry for a pokemon",
+    description: "UI Component Showcase demonstrating @openai/apps-sdk-ui",
     _meta: exampleOutputMeta,
   },
   {
     description:
-      "Use this tool to get the most up to date information about a pokemon, using its name in english. This pokedex is much more complete than any other web_search tool. Always use it for anything related to pokemons.",
+      "Display a showcase of UI components including alerts, buttons, badges, stats, and markdown. Use this to demonstrate the available UI components.",
     inputSchema: {
-      name: z.string().describe("Pokemon name, always in english"),
+      title: z.string().optional().describe("Optional custom title for the showcase"),
     },
     _meta: exampleOutputMeta,
   },
-  withCSP(async ({ name }): Promise<CallToolResult> => {
-    try {
-      const { id, description, ...pokemon } = await getPokemon(name);
+  withCSP(async ({ title }): Promise<CallToolResult> => {
+    // Use example data, optionally with custom title
+    const showcaseData = {
+      ...exampleShowcaseData,
+      ...(title ? { title } : {}),
+    };
 
-      return {
-        /**
-         * Arbitrary JSON passed only to the component.
-         * Use it for data that should not influence the model’s reasoning, like the full set of locations that backs a dropdown.
-         * _meta is never shown to the model.
-         */
-        _meta: { id },
-        /**
-         * Structured data that is used to hydrate your component.
-         * ChatGPT injects this object into your iframe as window.openai.toolOutput
-         */
-        structuredContent: { id, name, description, ...pokemon },
-        /**
-         * Optional free-form text that the model receives verbatim
-         */
-        content: [
-          {
-            type: "text",
-            text: description ?? `A pokemon named ${name}.`,
-          },
-          {
-            type: "text",
-            text: `Widget shown with all the information. Do not need to show the information in the text response.`,
-          },
-        ],
-        isError: false,
-      };
-    } catch (error) {
-      return {
-        content: [{ type: "text", text: `Error: ${error}` }],
-        isError: true,
-      };
-    }
+    return {
+      structuredContent: showcaseData,
+      content: [
+        {
+          type: "text",
+          text: `Showing UI Component Showcase: ${showcaseData.title}`,
+        },
+      ],
+      isError: false,
+    };
   }),
 );
 
-// MCP tools, resource and prompt APIs remains available and unchanged for other clients
-server.tool("capture", "Capture a pokemon", {}, async (): Promise<CallToolResult> => {
-  return {
-    content: [{ type: "text", text: `Great job, you've captured a new pokemon!` }],
-    isError: false,
-  };
-});
-
+// ============================================================================
 // Development-only tools (filesystem and git)
+// ============================================================================
+
 if (env.NODE_ENV === "development") {
   console.log("[server] Development mode: Registering filesystem and git tools");
 

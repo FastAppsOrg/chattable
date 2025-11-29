@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@apps-sdk-template/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@modelcontextprotocol/sdk':
         specifier: ^1.20.0
         version: 1.20.1

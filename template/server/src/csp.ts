@@ -26,7 +26,6 @@ export function getWidgetCSP() {
         getOrigin(), // Allow widgets to call back to this server
         // TODO: Add your external API domains here
         // Example: "https://api.example.com"
-        "https://pokeapi.co/api/v2/pokemon"
       ],
       resource_domains: [
         getOrigin(),
