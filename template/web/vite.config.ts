@@ -16,7 +16,7 @@ export default defineConfig({
 
 
   server: {
-    port: 5173,
+    port: 3000,
     host: true, // 외부 접근 허용 (widgetui-builder iframe)
     cors: {
       origin: "*", // 개발 환경에서 모든 origin 허용
@@ -25,7 +25,7 @@ export default defineConfig({
     hmr: {
       protocol: "ws",
       host: "localhost",
-      port: 5173,
+      port: 3000,
     },
   },
 });

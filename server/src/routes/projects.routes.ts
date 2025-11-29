@@ -5,6 +5,7 @@ import { MCPService } from '../services/mcp.service.js';
 import { MemoryService } from '../services/memory.service.js';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ZodType } from 'zod';
+import { generateWidgetScript } from '../lib/mcp-apps-shim.js';
 
 export function createProjectsRoutes(
   deploymentService: IDeploymentService,
@@ -1132,7 +1133,24 @@ export function createProjectsRoutes(
         : '';
 
       const widgetStateKey = `openai-widget-state:${toolName}:${toolId}`;
-      const apiScript = `
+
+      // Use the new MCP Apps dual-protocol shim (supports both OpenAI and MCP Apps)
+      const apiScript = generateWidgetScript({
+        toolInput,
+        toolOutput,
+        toolResponseMetadata,
+        theme: theme as 'light' | 'dark',
+        displayMode: 'inline',
+        toolId,
+        toolName,
+        widgetStateKey,
+      });
+
+      // === OLD OPENAI-ONLY SCRIPT (REPLACED) ===
+      // The following block has been replaced by the dual-protocol shim above.
+      // Keeping as comment for reference during migration.
+      /*
+      const OLD_apiScript = `
       <script>
         (function() {
           'use strict';
@@ -1298,6 +1316,8 @@ export function createProjectsRoutes(
         })();
       </script>
     `;
+      */
+      // === END OLD SCRIPT ===
 
       let modifiedHtml;
       // Use mcpOrigin (dev server URL) as base if available, otherwise default to /
@@ -1323,20 +1343,32 @@ export function createProjectsRoutes(
 </html>`;
       }
 
-      const allowedFrameOrigins = process.env.ALLOWED_FRAME_ORIGINS || 'http://localhost:5173 http://localhost:5174';
+      const allowedFrameOrigins = process.env.ALLOWED_FRAME_ORIGINS || 'http://localhost:5173 http://localhost:5174 http://localhost:5175 http://localhost:5176';
+
+      // Extract localhost origins from HTML content (for widget dev servers like localhost:3000)
+      const localhostOrigins = new Set<string>();
+      const localhostUrlRegex = /http:\/\/localhost:\d+/g;
+      const matches = htmlContent.match(localhostUrlRegex);
+      if (matches) {
+        matches.forEach((url: string) => localhostOrigins.add(url));
+      }
+      if (mcpOrigin) {
+        localhostOrigins.add(mcpOrigin);
+      }
+      const allOrigins = Array.from(localhostOrigins).join(' ');
 
       // Default CSP directives
-      // CRITICAL: Add mcpOrigin to connect-src to allow fetching data from dev server
+      // CRITICAL: Add mcpOrigin AND any localhost origins found in HTML to allow dev server resources
       const cspDirectives = [
         "default-src 'self'",
-        `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com${mcpOrigin ? ' ' + mcpOrigin : ''}`,
+        `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com${allOrigins ? ' ' + allOrigins : ''}`,
         "worker-src 'self' blob:",
         "child-src 'self' blob:",
-        `style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com${mcpOrigin ? ' ' + mcpOrigin : ''}`,
-        `img-src 'self' data: https: blob:${mcpOrigin ? ' ' + mcpOrigin : ''}`,
-        `media-src 'self' data: https: blob:${mcpOrigin ? ' ' + mcpOrigin : ''}`,
-        `font-src 'self' data: https://cdn.jsdelivr.net https://unpkg.com${mcpOrigin ? ' ' + mcpOrigin : ''}`,
-        `connect-src 'self' https: wss: ws:${mcpOrigin ? ' ' + mcpOrigin : ''}`,
+        `style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com${allOrigins ? ' ' + allOrigins : ''}`,
+        `img-src 'self' data: https: blob:${allOrigins ? ' ' + allOrigins : ''}`,
+        `media-src 'self' data: https: blob:${allOrigins ? ' ' + allOrigins : ''}`,
+        `font-src 'self' data: https://cdn.jsdelivr.net https://unpkg.com${allOrigins ? ' ' + allOrigins : ''}`,
+        `connect-src 'self' https: wss: ws:${allOrigins ? ' ' + allOrigins : ''}`,
         `frame-ancestors 'self' ${allowedFrameOrigins}`,
       ];
 

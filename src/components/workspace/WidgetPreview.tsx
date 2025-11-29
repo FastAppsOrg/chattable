@@ -3,6 +3,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { apiClient } from '../../utils/api'
 import { API_CONFIG } from '../../config/api.config'
 import type { Project } from '../../types/project'
+import { McpAppsHostBridge } from '../../lib/mcp-apps'
 
 interface WidgetPreviewProps {
   uri: string
@@ -17,6 +18,7 @@ interface WidgetPreviewProps {
 
 export function WidgetPreview({ uri, toolName, projectId, mockData = {}, toolOutput, widgetHtml, onClose, showOutputEditor = false }: WidgetPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const bridgeRef = useRef<McpAppsHostBridge | null>(null)
   const { theme } = useTheme()
   const [isReady, setIsReady] = useState(false)
   const [widgetUrl, setWidgetUrl] = useState<string | null>(null)
@@ -97,30 +99,79 @@ export function WidgetPreview({ uri, toolName, projectId, mockData = {}, toolOut
     storeWidgetData()
   }, [uri, toolName, mockData, toolOutput, theme, projectId])
 
-  // Handle postMessage communication with iframe
+  // Handle communication with iframe using MCP Apps bridge (dual-protocol)
   useEffect(() => {
     if (!widgetUrl) return
 
-    const handleMessage = async (event: MessageEvent) => {
-      // Only accept messages from our iframe
-      if (
-        !iframeRef.current ||
-        event.source !== iframeRef.current.contentWindow
-      ) {
-        return
+    const iframe = iframeRef.current
+    if (!iframe) return
+
+    // Create bridge with callbacks
+    const bridge = new McpAppsHostBridge(
+      {
+        hostName: 'Chattable',
+        hostVersion: '1.0.0',
+        context: {
+          theme: theme as 'light' | 'dark',
+          displayMode: 'expanded',
+          platform: 'web',
+        },
+      },
+      {
+        onInitialized: () => {
+          console.log('[WidgetPreview] MCP Apps: Guest initialized')
+          setIsReady(true)
+          setError(null)
+
+          // Send tool data after initialization
+          const widgetData = toolOutput?.structuredContent || toolOutput || null
+          if (widgetData) {
+            bridge.sendToolResult({
+              structuredContent: widgetData,
+              content: [{ type: 'text', text: 'Tool result' }],
+            })
+          }
+          if (mockData) {
+            bridge.sendToolInput(toolName, mockData)
+          }
+        },
+        onOpenLink: (url) => {
+          console.log('[WidgetPreview] Opening link:', url)
+          window.open(url, '_blank', 'noopener,noreferrer')
+        },
+        onMessage: (role, text) => {
+          console.log('[WidgetPreview] Message from widget:', role, text)
+          // TODO: Forward to chat if needed
+        },
+        onSizeChange: (width, height) => {
+          console.log('[WidgetPreview] Size change:', width, height)
+          // Could resize iframe here if needed
+        },
+        onError: (err) => {
+          console.error('[WidgetPreview] Bridge error:', err)
+        },
       }
+    )
+    bridgeRef.current = bridge
 
-      console.log('[WidgetPreview] Received postMessage:', event.data.type)
+    // Also handle legacy OpenAI protocol messages (for backward compatibility)
+    const handleLegacyMessage = async (event: MessageEvent) => {
+      if (event.source !== iframe.contentWindow) return
 
-      switch (event.data.type) {
+      // Skip JSON-RPC messages (handled by bridge)
+      if (event.data?.jsonrpc === '2.0') return
+
+      const { type } = event.data || {}
+      console.log('[WidgetPreview] Legacy postMessage:', type)
+
+      switch (type) {
         case 'openai:setWidgetState':
           console.log('[WidgetPreview] Widget state saved:', event.data.state)
           break
 
         case 'openai:callTool':
           console.log('[WidgetPreview] Tool call requested:', event.data.toolName, event.data.params)
-          // TODO: Implement tool calling if needed
-          iframeRef.current?.contentWindow?.postMessage(
+          iframe.contentWindow?.postMessage(
             {
               type: 'openai:callTool:response',
               requestId: event.data.requestId,
@@ -137,9 +188,8 @@ export function WidgetPreview({ uri, toolName, projectId, mockData = {}, toolOut
     }
 
     const handleLoad = () => {
-      console.log('[WidgetPreview] iframe loaded successfully')
-      setIsReady(true)
-      setError(null)
+      console.log('[WidgetPreview] iframe loaded, connecting bridge...')
+      bridge.connect(iframe)
     }
 
     const handleError = (e: Event) => {
@@ -148,23 +198,32 @@ export function WidgetPreview({ uri, toolName, projectId, mockData = {}, toolOut
       setIsReady(false)
     }
 
-    window.addEventListener('message', handleMessage)
-    iframeRef.current?.addEventListener('load', handleLoad)
-    iframeRef.current?.addEventListener('error', handleError)
+    window.addEventListener('message', handleLegacyMessage)
+    iframe.addEventListener('load', handleLoad)
+    iframe.addEventListener('error', handleError)
 
     return () => {
-      window.removeEventListener('message', handleMessage)
-      iframeRef.current?.removeEventListener('load', handleLoad)
-      iframeRef.current?.removeEventListener('error', handleError)
+      window.removeEventListener('message', handleLegacyMessage)
+      iframe.removeEventListener('load', handleLoad)
+      iframe.removeEventListener('error', handleError)
+      bridge.disconnect()
+      bridgeRef.current = null
     }
-  }, [widgetUrl])
+  }, [widgetUrl, toolName, toolOutput, mockData])
 
-  // Send theme updates to iframe
+  // Send theme updates to iframe via MCP Apps bridge
   useEffect(() => {
-    if (!isReady || !iframeRef.current?.contentWindow) return
+    if (!isReady) return
 
     console.log('[WidgetPreview] Sending theme update:', theme)
-    iframeRef.current.contentWindow.postMessage(
+
+    // Use MCP Apps protocol
+    if (bridgeRef.current) {
+      bridgeRef.current.sendHostContextChanged({ theme: theme as 'light' | 'dark' })
+    }
+
+    // Also send legacy format for backward compatibility
+    iframeRef.current?.contentWindow?.postMessage(
       {
         type: 'openai:set_globals',
         globals: { theme },

@@ -168,10 +168,51 @@ export class LocalDeploymentAdapter implements IDeploymentService {
         this.runningProcesses.delete(projectId);
       });
 
+      // Start widget dev server if pnpm workspace (skybridge expects port 3000)
+      let widgetProcess: ChildProcess | undefined;
+      let widgetPort: number | undefined;
+
+      if (hasPnpmWorkspace) {
+        // Check if dev:widget script exists by looking for it in package.json scripts
+        const hasWidgetScript = await execAsync(`grep -q '"dev:widget"' package.json && echo "yes"`, { cwd: projectDir })
+          .then(result => result.stdout.includes('yes'))
+          .catch(() => false);
+
+        if (hasWidgetScript) {
+          // Skybridge hardcodes port 3000 for development, so we must use that
+          widgetPort = 3000;
+          const widgetCommand = `${pkgManager} run dev:widget`;
+
+          console.log(`[Local] Spawning widget dev server: ${widgetCommand} on port ${widgetPort}`);
+
+          widgetProcess = spawn('sh', ['-c', widgetCommand], {
+            cwd: devCwd,
+            env: {
+              ...process.env,
+            },
+            stdio: ['ignore', 'pipe', 'pipe'],
+          });
+
+          widgetProcess.stdout?.on('data', (data) => {
+            console.log(`[Local][Widget:${projectId}] ${data.toString().trim()}`);
+          });
+
+          widgetProcess.stderr?.on('data', (data) => {
+            console.error(`[Local][Widget:${projectId}] ${data.toString().trim()}`);
+          });
+
+          widgetProcess.on('exit', (code) => {
+            console.log(`[Local] Widget server exited with code ${code} for ${projectId}`);
+          });
+        }
+      }
+
       this.runningProcesses.set(projectId, {
         devProcess,
         devPort,
         projectDir,
+        widgetProcess,
+        widgetPort,
       });
 
       console.log(`[Local] Project ${projectId} created successfully`);
@@ -305,10 +346,51 @@ export class LocalDeploymentAdapter implements IDeploymentService {
       this.runningProcesses.delete(projectId);
     });
 
+    // Start widget dev server if pnpm workspace (skybridge expects port 3000)
+    let widgetProcess: ChildProcess | undefined;
+    let widgetPort: number | undefined;
+
+    if (hasPnpmWorkspace) {
+      // Check if dev:widget script exists by looking for it in package.json scripts
+      const hasWidgetScript = await execAsync(`grep -q '"dev:widget"' package.json && echo "yes"`, { cwd: projectDir })
+        .then(result => result.stdout.includes('yes'))
+        .catch(() => false);
+
+      if (hasWidgetScript) {
+        // Skybridge hardcodes port 3000 for development, so we must use that
+        widgetPort = 3000;
+        const widgetCommand = `${pkgManager} run dev:widget`;
+
+        console.log(`[Local] Spawning widget dev server: ${widgetCommand} on port ${widgetPort}`);
+
+        widgetProcess = spawn('sh', ['-c', widgetCommand], {
+          cwd: devCwd,
+          env: {
+            ...process.env,
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+
+        widgetProcess.stdout?.on('data', (data) => {
+          console.log(`[Local][Widget:${projectId}] ${data.toString().trim()}`);
+        });
+
+        widgetProcess.stderr?.on('data', (data) => {
+          console.error(`[Local][Widget:${projectId}] ${data.toString().trim()}`);
+        });
+
+        widgetProcess.on('exit', (code) => {
+          console.log(`[Local] Widget server exited with code ${code} for ${projectId}`);
+        });
+      }
+    }
+
     this.runningProcesses.set(projectId, {
       devProcess,
       devPort,
       projectDir,
+      widgetProcess,
+      widgetPort,
     });
 
     // Wait for server to be actually ready before returning
@@ -372,11 +454,22 @@ export class LocalDeploymentAdapter implements IDeploymentService {
     const processInfo = this.runningProcesses.get(projectId);
 
     if (processInfo) {
+      // Kill dev process
       processInfo.devProcess.kill('SIGTERM');
+
+      // Kill widget process if running
+      if (processInfo.widgetProcess) {
+        processInfo.widgetProcess.kill('SIGTERM');
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       if (processInfo.devProcess.exitCode === null) {
         processInfo.devProcess.kill('SIGKILL');
+      }
+
+      if (processInfo.widgetProcess && processInfo.widgetProcess.exitCode === null) {
+        processInfo.widgetProcess.kill('SIGKILL');
       }
 
       this.runningProcesses.delete(projectId);
@@ -448,6 +541,9 @@ export class LocalDeploymentAdapter implements IDeploymentService {
 
     for (const [projectId, processInfo] of this.runningProcesses.entries()) {
       processInfo.devProcess.kill('SIGTERM');
+      if (processInfo.widgetProcess) {
+        processInfo.widgetProcess.kill('SIGTERM');
+      }
     }
 
     this.runningProcesses.clear();
@@ -458,4 +554,6 @@ interface ProcessInfo {
   devProcess: ChildProcess;
   devPort: number;
   projectDir: string;
+  widgetProcess?: ChildProcess;
+  widgetPort?: number;
 }
